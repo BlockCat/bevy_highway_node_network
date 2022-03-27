@@ -1,0 +1,24 @@
+[package]
+name = "bevy_dutch_road"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+bevy = { version = "0.6.0", features = ["dynamic"] }
+bevy_shapefile = { path = "./bevy_shapefile" }
+bevy_prototype_lyon = "0.4.0"
+
+[profile.dev.package.bevy_shapefile]
+opt-level = 3
+
+[profile.dev.package.bevy]
+opt-level = 3
+
+[profile.dev.package.bevy_prototype_lyon]
+opt-level = 3
+
+
+[workspace]
+members = ["bevy_shapefile", "dbf_sql_tool"]
