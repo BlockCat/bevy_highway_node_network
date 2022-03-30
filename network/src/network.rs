@@ -62,6 +62,7 @@ impl<V: NetworkNode, E: NetworkEdge> DirectedNetworkGraph<V, E> {
         let mut heap = BinaryHeap::new();
         heap.push(Reverse((F32(0.0), node, None)));
         ForwardDijkstraIterator {
+            distance: 0.0,
             network: self,
             heap,
             visited: HashSet::new(),
@@ -72,6 +73,7 @@ impl<V: NetworkNode, E: NetworkEdge> DirectedNetworkGraph<V, E> {
         let mut heap = BinaryHeap::new();
         heap.push(Reverse((F32(0.0), node, None)));
         BackwardDijkstraIterator {
+            distance: 0.0,
             network: self,
             heap,
             visited: HashSet::new(),
@@ -99,11 +101,13 @@ pub mod iterators {
 
     pub struct ForwardDijkstraIterator<'a, V: NetworkNode, E: NetworkEdge> {
         pub network: &'a DirectedNetworkGraph<V, E>,
+        pub distance: f32,
         pub visited: HashSet<NodeId>,
         pub heap: BinaryHeap<Reverse<(F32, NodeId, Option<EdgeId>)>>,
     }
 
     pub struct BackwardDijkstraIterator<'a, V: NetworkNode, E: NetworkEdge> {
+        pub distance: f32,
         pub network: &'a DirectedNetworkGraph<V, E>,
         pub visited: HashSet<NodeId>,
         pub heap: BinaryHeap<Reverse<(F32, NodeId, Option<EdgeId>)>>,
@@ -128,6 +132,8 @@ pub mod iterators {
                         Some(*edge_id),
                     )));
                 }
+
+                self.distance = distance;
 
                 return Some((node, distance, edge));
             }
@@ -155,6 +161,8 @@ pub mod iterators {
                     )));
                 }
 
+                self.distance = distance;
+
                 return Some((node, distance, edge));
             }
             return None;
@@ -166,6 +174,7 @@ pub mod iterators {
 mod tests {
     use crate::{DirectedNetworkGraph, EdgeId, NetworkEdge, NetworkNode, NodeId};
 
+    #[derive(Debug, Clone, Copy)]
     struct TestNode(usize);
 
     struct TestEdge(usize, usize, f32);
@@ -190,6 +199,7 @@ mod tests {
         }
     }
 
+    // https://www.baeldung.com/wp-content/uploads/2017/01/initial-graph.png
     fn create_network() -> DirectedNetworkGraph<TestNode, TestEdge> {
         DirectedNetworkGraph {
             nodes: vec![
