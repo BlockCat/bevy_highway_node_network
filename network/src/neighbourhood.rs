@@ -149,77 +149,24 @@ mod tests {
     use std::collections::HashMap;
 
     use crate::{
-        DirectedNetworkGraph, EdgeId, ForwardNeighbourhood, NetworkEdge, NetworkNode, NodeId,
-        PathParent,
+        create_network,
+        tests::{TestEdge, TestNode},
+        DirectedNetworkGraph, EdgeId, ForwardNeighbourhood, NodeId, PathParent,
     };
 
-    #[derive(Debug, Clone, Copy)]
-    struct TestNode(usize);
-
-    struct TestEdge(usize, usize, f32);
-
-    impl NetworkNode for TestNode {
-        fn id(&self) -> crate::NodeId {
-            self.0.into()
-        }
-    }
-
-    impl NetworkEdge for TestEdge {
-        fn source(&self) -> crate::NodeId {
-            self.0.into()
-        }
-
-        fn target(&self) -> crate::NodeId {
-            self.1.into()
-        }
-
-        fn distance(&self) -> f32 {
-            self.2
-        }
-    }
-
-    // https://www.baeldung.com/wp-content/uploads/2017/01/initial-graph.png
-    fn create_network() -> DirectedNetworkGraph<TestNode, TestEdge> {
-        DirectedNetworkGraph {
-            nodes: vec![
-                TestNode(0), // A
-                TestNode(1), // B
-                TestNode(2), // C
-                TestNode(3), // D
-                TestNode(4), // E
-                TestNode(5), // F
-            ],
-            edges: vec![
-                TestEdge(0, 1, 10.0), // A -> B | 0
-                TestEdge(0, 2, 15.0), // A -> C | 1
-                TestEdge(1, 3, 5.0),  // B -> D | 2
-                TestEdge(1, 5, 15.0), // B -> F | 3
-                TestEdge(2, 4, 10.0), // C -> E | 4
-                TestEdge(3, 4, 2.0),  // D -> E | 5
-                TestEdge(3, 5, 1.0),  // D -> F | 6
-                TestEdge(5, 4, 5.0),  // F -> E | 7
-            ],
-            out_edges: vec![
-                vec![EdgeId(0), EdgeId(1)],
-                vec![EdgeId(2), EdgeId(3)],
-                vec![EdgeId(4)],
-                vec![EdgeId(5), EdgeId(6)],
-                vec![],
-                vec![EdgeId(7)],
-            ],
-            in_edges: vec![
-                vec![],                                // A
-                vec![EdgeId(0)],                       // B
-                vec![EdgeId(1)],                       // C
-                vec![EdgeId(2)],                       // D
-                vec![EdgeId(4), EdgeId(5), EdgeId(7)], // E
-                vec![EdgeId(3), EdgeId(6)],            // F
-            ],
-        }
-    }
     #[test]
     fn forward_neighbourhood_test() {
-        let network = create_network();
+        // https://www.baeldung.com/wp-content/uploads/2017/01/initial-graph.png
+        let network = create_network!(
+            0 => 1; 10.0,
+            0 => 2; 15.0,
+            1 => 3; 5.0,
+            1 => 5; 15.0,
+            2 => 4; 10.0,
+            3 => 4; 2.0,
+            3 => 5; 1.0,
+            5 => 4; 5.0
+        );
 
         let forward = ForwardNeighbourhood::from_network(3, &network);
 

@@ -1,8 +1,11 @@
 #![feature(map_try_insert)]
+pub use directed_network::*;
 pub use neighbourhood::*;
-pub use network::*;
+mod directed_network;
 mod highway;
 mod neighbourhood;
-mod network;
 
 pub use highway::phase_1;
+
+#[cfg(test)]
+pub(crate) mod tests;
