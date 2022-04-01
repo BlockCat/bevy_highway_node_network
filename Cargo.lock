@@ -336,13 +336,16 @@ dependencies = [
 ]
 
 [[package]]
-name = "bevy_dutch_road"
+name = "bevy_dutch_road_highway_node_network"
 version = "0.1.0"
 dependencies = [
  "bevy",
  "bevy_prototype_lyon",
  "bevy_shapefile",
+ "bincode",
  "network",
+ "rusqlite",
+ "serde",
 ]
 
 [[package]]
@@ -1304,6 +1307,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "dbf_to_sql"
+version = "0.1.0"
+dependencies = [
+ "rusqlite",
+ "shapefile",
+]
+
+[[package]]
 name = "deflate"
 version = "0.8.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1330,14 +1341,6 @@ name = "downcast-rs"
 version = "1.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9ea835d29036a4087793836fa931b08837ad5e957da9e23886b29586fb9b6650"
-
-[[package]]
-name = "dvf_sql_tool"
-version = "0.1.0"
-dependencies = [
- "rusqlite",
- "shapefile",
-]
 
 [[package]]
 name = "either"

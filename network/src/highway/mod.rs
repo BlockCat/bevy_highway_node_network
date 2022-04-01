@@ -9,11 +9,11 @@ use crate::{
 pub fn phase_1<V: NetworkNode, E: NetworkEdge>(size: usize, network: &DirectedNetworkGraph<V, E>) {
     let computed = ComputedState::new(size, network);
 
-    network
-        .nodes
-        .par_iter()
-        .map(|node| dijkstra::forward(node.id(), &computed, network))
-        .collect::<Vec<_>>();
+    // network
+    //     .nodes
+    //     .par_iter()
+    //     .map(|node| dijkstra::create_directed_acyclic_graph(node.id(), &computed, network))
+    //     .collect::<Vec<_>>();
 }
 
 pub struct ComputedState {

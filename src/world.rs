@@ -1,9 +1,10 @@
-use crate::camera::MainCamera;
+use crate::{camera::MainCamera, nwb_to_road_network};
 use bevy::prelude::*;
 use bevy_prototype_lyon::{prelude::*, shapes};
 use bevy_shapefile::{RoadMap, RoadSection, AABB};
 use std::{
     collections::{HashMap, HashSet},
+    fs::File,
     path::Path,
 };
 
@@ -13,8 +14,10 @@ pub struct WorldPlugin {
 
 #[derive(Debug, Clone)]
 pub struct WorldConfig {
+    pub database_path: String,
     pub compiled_path: String,
     pub data_path: String,
+    pub network_path: String,
 
     pub selected_colour: Color,
     pub normal_colour: Color,
@@ -61,9 +64,46 @@ fn init_road_map(config: Res<WorldConfig>, mut commands: Commands) {
         road_map
     };
 
-    commands.insert_resource(road_map);
+    let network_path = Path::new(&config.network_path);
 
+    // let network = if network_path.exists() {
+    //     bincode::deserialize_from(File::open(network_path).unwrap()).unwrap()
+    // } else {
+    //     let network = nwb_to_road_network::preprocess_roadmap(&road_map, &config.database_path);
+    //     bincode::serialize_into(File::create(network_path).unwrap(), &network)
+    //         .expect("Could not serialize and write");
+
+    //     network
+    // };
+
+    commands.insert_resource(road_map);
     println!("Inserted resources");
+
+    // println!("Status:");
+    // println!("Nodes: {}", network.nodes.len());
+    // println!("Edges: {}", network.edges.len());
+
+    // let out = network
+    //     .out_edges
+    //     .iter()
+    //     .map(|x| x.len())
+    //     .collect::<Vec<_>>();
+    // let ins = network.in_edges.iter().map(|x| x.len()).collect::<Vec<_>>();
+
+    // println!(
+    //     "out_edges: [avg: {}, min: {}, max: {}",
+    //     out.iter().sum::<usize>() as f32 / out.len() as f32,
+    //     out.iter().min().unwrap(),
+    //     out.iter().max().unwrap()
+    // );
+    // println!(
+    //     "in_edges: [avg: {}, min: {}, max: {}",
+    //     ins.iter().sum::<usize>() as f32 / ins.len() as f32,
+    //     ins.iter().min().unwrap(),
+    //     ins.iter().max().unwrap()
+    // );
+
+    // let error = network::phase_1(4, &network);
 }
 
 fn visible_entities(
@@ -132,7 +172,7 @@ fn spawn_figure(commands: &mut Commands, section: &RoadSection, color: Color) ->
     commands
         .spawn_bundle(GeometryBuilder::build_as(
             &shape,
-            DrawMode::Stroke(StrokeMode::new(color, 3.0)),
+            DrawMode::Stroke(StrokeMode::new(color, 2.0)),
             Transform::default(),
         ))
         .insert(WorldEntity::default())

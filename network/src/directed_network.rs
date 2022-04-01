@@ -4,6 +4,10 @@ use std::{
     ops::Deref,
 };
 
+use serde::{Deserialize, Serialize};
+
+use crate::{BackwardNeighbourhood, ForwardNeighbourhood};
+
 use self::iterators::{BackwardDijkstraIterator, ForwardDijkstraIterator, F32};
 
 pub trait NetworkNode: Send + Sync {
@@ -16,7 +20,7 @@ pub trait NetworkEdge: Send + Sync {
     fn distance(&self) -> f32;
 }
 
-#[derive(Debug, Clone, Copy, Hash, PartialEq, PartialOrd, Eq, Ord)]
+#[derive(Debug, Clone, Copy, Hash, PartialEq, PartialOrd, Eq, Ord, Serialize, Deserialize)]
 pub struct NodeId(pub usize);
 
 impl From<usize> for NodeId {
@@ -33,7 +37,7 @@ impl Deref for NodeId {
     }
 }
 
-#[derive(Debug, Clone, Copy, Hash, PartialEq, PartialOrd, Eq, Ord)]
+#[derive(Debug, Clone, Copy, Hash, PartialEq, PartialOrd, Eq, Ord, Serialize, Deserialize)]
 pub struct EdgeId(pub usize);
 
 impl From<usize> for EdgeId {
@@ -50,6 +54,7 @@ impl Deref for EdgeId {
     }
 }
 
+#[derive(Debug, Serialize, Deserialize)]
 pub struct DirectedNetworkGraph<V: NetworkNode, E: NetworkEdge> {
     pub nodes: Vec<V>,
     pub edges: Vec<E>,
@@ -78,6 +83,14 @@ impl<V: NetworkNode, E: NetworkEdge> DirectedNetworkGraph<V, E> {
             heap,
             visited: HashSet::new(),
         }
+    }
+
+    pub fn forward_neighbourhood(&self, size: usize) -> ForwardNeighbourhood {
+        ForwardNeighbourhood::from_network(size, self)
+    }
+
+    pub fn backward_neighbourhood(&self, size: usize) -> BackwardNeighbourhood {
+        BackwardNeighbourhood::from_network(size, self)
     }
 }
 
@@ -172,7 +185,7 @@ pub mod iterators {
 
 #[cfg(test)]
 mod tests {
-    use crate::{DirectedNetworkGraph, EdgeId, NetworkEdge, NetworkNode, NodeId};
+    use crate::{DirectedNetworkGraph, EdgeId, NetworkEdge, NetworkNode, NodeId, tests::create_undirected_network};
 
     #[derive(Debug, Clone, Copy)]
     struct TestNode(usize);
@@ -289,4 +302,5 @@ mod tests {
 
         assert_eq!(vec![(NodeId(0), 0.0, None)], backward);
     }
+
 }
