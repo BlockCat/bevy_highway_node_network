@@ -185,7 +185,7 @@ pub mod iterators {
 
 #[cfg(test)]
 mod tests {
-    use crate::{DirectedNetworkGraph, EdgeId, NetworkEdge, NetworkNode, NodeId, tests::create_undirected_network};
+    use crate::{DirectedNetworkGraph, EdgeId, NetworkEdge, NetworkNode, NodeId};
 
     #[derive(Debug, Clone, Copy)]
     struct TestNode(usize);
@@ -302,5 +302,4 @@ mod tests {
 
         assert_eq!(vec![(NodeId(0), 0.0, None)], backward);
     }
-
 }

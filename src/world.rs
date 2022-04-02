@@ -1,10 +1,13 @@
-use crate::{camera::MainCamera, nwb_to_road_network};
+use crate::{
+    camera::MainCamera,
+    nwb_to_road_network::{self, RoadEdge, RoadNode},
+};
 use bevy::prelude::*;
 use bevy_prototype_lyon::{prelude::*, shapes};
 use bevy_shapefile::{RoadMap, RoadSection, AABB};
+use network::{DirectedNetworkGraph, EdgeId};
 use std::{
     collections::{HashMap, HashSet},
-    fs::File,
     path::Path,
 };
 
@@ -43,67 +46,62 @@ impl Plugin for WorldPlugin {
 }
 
 fn init_road_map(config: Res<WorldConfig>, mut commands: Commands) {
-    let path = Path::new(&config.compiled_path);
-
-    let road_map = if path.exists() {
-        println!("compiled.data exists, reading");
-        let road_map = bevy_shapefile::RoadMap::read(path);
-        println!("Finished reading");
+    let road_map_path = Path::new(&config.compiled_path);
+    let road_map = if let Ok(road_map) = crate::read_file(road_map_path) {
         road_map
     } else {
-        println!("compiled.data doesn't exist, creating");
+        println!("File {:?} not found, creating...", road_map_path);
         let road_map =
-            bevy_shapefile::load_file(&config.data_path).expect("Could not read shapefile");
+            bevy_shapefile::from_shapefile(&config.data_path).expect("Could not read shapefile");
 
-        println!("Finished creating, writing");
-
-        road_map.write(path);
-
-        println!("Finished writing");
+        crate::write_file(&road_map, road_map_path).expect("Could not write road_map");
 
         road_map
     };
 
     let network_path = Path::new(&config.network_path);
-
-    // let network = if network_path.exists() {
-    //     bincode::deserialize_from(File::open(network_path).unwrap()).unwrap()
-    // } else {
-    //     let network = nwb_to_road_network::preprocess_roadmap(&road_map, &config.database_path);
-    //     bincode::serialize_into(File::create(network_path).unwrap(), &network)
-    //         .expect("Could not serialize and write");
-
-    //     network
-    // };
+    let network = if let Ok(network) = crate::read_file(network_path) {
+        network
+    } else {
+        println!("File {:?} not found, creating...", network_path);
+        let network = nwb_to_road_network::preprocess_roadmap(&road_map, &config.database_path);
+        crate::write_file(&network, network_path).expect("Could not write network");
+        network
+    };
 
     commands.insert_resource(road_map);
     println!("Inserted resources");
 
-    // println!("Status:");
-    // println!("Nodes: {}", network.nodes.len());
-    // println!("Edges: {}", network.edges.len());
+    println!("Status:");
+    println!("Nodes: {}", network.nodes.len());
+    println!("Edges: {}", network.edges.len());
 
-    // let out = network
-    //     .out_edges
-    //     .iter()
-    //     .map(|x| x.len())
-    //     .collect::<Vec<_>>();
-    // let ins = network.in_edges.iter().map(|x| x.len()).collect::<Vec<_>>();
+    let out = network
+        .out_edges
+        .iter()
+        .map(|x| x.len())
+        .collect::<Vec<_>>();
+    let ins = network.in_edges.iter().map(|x| x.len()).collect::<Vec<_>>();
 
-    // println!(
-    //     "out_edges: [avg: {}, min: {}, max: {}",
-    //     out.iter().sum::<usize>() as f32 / out.len() as f32,
-    //     out.iter().min().unwrap(),
-    //     out.iter().max().unwrap()
-    // );
-    // println!(
-    //     "in_edges: [avg: {}, min: {}, max: {}",
-    //     ins.iter().sum::<usize>() as f32 / ins.len() as f32,
-    //     ins.iter().min().unwrap(),
-    //     ins.iter().max().unwrap()
-    // );
+    println!(
+        "out_edges: [avg: {}, min: {}, max: {}",
+        out.iter().sum::<usize>() as f32 / out.len() as f32,
+        out.iter().min().unwrap(),
+        out.iter().max().unwrap()
+    );
+    println!(
+        "in_edges: [avg: {}, min: {}, max: {}",
+        ins.iter().sum::<usize>() as f32 / ins.len() as f32,
+        ins.iter().min().unwrap(),
+        ins.iter().max().unwrap()
+    );
 
-    // let error = network::phase_1(4, &network);
+    // let next_level_edges = network::phase_1(3, &network);
+    // println!("Collected phase1 edges: {}", next_level_edges.len());
+
+    commands.insert_resource(network);
+    
+    // commands.insert_resource(next_level_edges);
 }
 
 fn visible_entities(
@@ -151,8 +149,8 @@ fn visible_entities(
 
         for id in added {
             let section = road_map.roads.get(id).unwrap();
-            let entity = spawn_figure(&mut commands, section, config.selected_colour.clone());
-
+            let colour = config.normal_colour;
+            let entity = spawn_figure(&mut commands, section, colour);
             tracker.map.insert(*id, entity);
         }
     }

@@ -67,7 +67,7 @@ fn create_directed_acyclic_graph<V: NetworkNode, E: NetworkEdge>(
 
     let mut settled_order = VecDeque::new();
 
-    unimplemented!("Continue growing the DAG, and stop when there are no more active nodes");
+    // println!("Continue growing the DAG, and stop when there are no more active nodes");
 
     initialize_heap(s0, network, &mut heap, &mut visited);
 
@@ -77,10 +77,8 @@ fn create_directed_acyclic_graph<V: NetworkNode, E: NetworkEdge>(
             continue;
         }
 
-        let mut parents = HashMap::from([state.parent]);
-
-        let (parent_border_distance, parent_reference_distance) =
-            caculate_distances(&visited, &mut state, &mut heap, &mut parents);
+        let (parent_border_distance, parent_reference_distance, parents) =
+            caculate_distances(&visited, &mut state, &mut heap);
 
         let border_distance = border_distance(
             s0,
@@ -172,17 +170,17 @@ fn collect_next_level_edges(
         }
     }
 
-    unreachable!()
+    collected_edges
 }
 
 fn caculate_distances(
     visited: &HashMap<NodeId, VisitedState>,
     state: &mut DijkstraNodeState,
     heap: &mut BinaryHeap<DijkstraNodeState>,
-    parents: &mut HashMap<NodeId, (Option<EdgeId>, f32)>,
-) -> (f32, f32) {
+) -> (f32, f32, HashMap<NodeId, (Option<EdgeId>, f32)>) {
     let mut parent_border_distance = visited[&state.parent.0].border_distance;
     let mut parent_reference_distance = visited[&state.parent.0].reference_distance;
+    let mut parents = HashMap::from([state.parent]);
     while let Some(peek) = heap
         .peek()
         .filter(|next| next.current == state.current && next.distance == state.distance)
@@ -196,7 +194,7 @@ fn caculate_distances(
         parents.insert(peek.parent.0, peek.parent.1);
         *state = heap.pop().unwrap();
     }
-    (parent_border_distance, parent_reference_distance)
+    (parent_border_distance, parent_reference_distance, parents)
 }
 
 fn initialize_heap<V: NetworkNode, E: NetworkEdge>(
@@ -358,11 +356,13 @@ mod tests {
             next_edges.extend(edges);
         }
 
-        let mut next_edges = next_edges.into_iter().map(|x| network.edges[*x]).collect::<Vec<_>>();
-        next_edges.sort_by_key(|x| (x.0, x. 1));
+        let mut next_edges = next_edges
+            .into_iter()
+            .map(|x| network.edges[*x])
+            .collect::<Vec<_>>();
+        next_edges.sort_by_key(|x| (x.0, x.1));
         println!("Added:");
         for edge in next_edges {
-            
             println!("{} -- {}", *edge.source(), *edge.target());
         }
     }

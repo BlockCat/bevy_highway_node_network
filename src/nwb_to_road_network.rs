@@ -22,7 +22,7 @@ impl NetworkNode for RoadNode {
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub struct RoadEdge {
-    pub id: usize,
+    pub id: EdgeId,
     distance: f32,
     source: NodeId,
     target: NodeId,
@@ -71,10 +71,8 @@ pub fn preprocess_roadmap<P: AsRef<Path>>(
     roadmap: &RoadMap,
     database: P,
 ) -> DirectedNetworkGraph<RoadNode, RoadEdge> {
-    
     let database = Connection::open(database).expect("Could not open database");
 
-    
     // collect edges.
     let roads = &roadmap.roads;
 
@@ -165,7 +163,7 @@ pub fn preprocess_roadmap<P: AsRef<Path>>(
 fn insert_new_node(junction_id: usize, nodes: &mut HashMap<usize, RoadNode>) -> NodeId {
     let id = nodes.len();
     nodes
-        .entry(junction_id)        
+        .entry(junction_id)
         .or_insert_with(|| RoadNode {
             id,
             road_id: junction_id,
@@ -181,13 +179,13 @@ fn insert_new_edge(
     out_collection: &mut HashMap<NodeId, Vec<EdgeId>>,
     in_collection: &mut HashMap<NodeId, Vec<EdgeId>>,
 ) {
-    let id = edges.len();
+    let id = EdgeId(edges.len());
     edges.push(RoadEdge {
         id,
         distance,
         source,
         target,
     });
-    out_collection.entry(source).or_default().push(EdgeId(id));
-    in_collection.entry(target).or_default().push(EdgeId(id));
+    out_collection.entry(source).or_default().push(id);
+    in_collection.entry(target).or_default().push(id);
 }
