@@ -1,11 +1,11 @@
 use crate::{
     camera::MainCamera,
-    nwb_to_road_network::{self, RoadEdge, RoadNode},
+    nwb::{self},
 };
 use bevy::prelude::*;
 use bevy_prototype_lyon::{prelude::*, shapes};
 use bevy_shapefile::{RoadMap, RoadSection, AABB};
-use network::{DirectedNetworkGraph, EdgeId};
+use network::{DirectedNetworkGraph};
 use std::{
     collections::{HashMap, HashSet},
     path::Path,
@@ -18,9 +18,9 @@ pub struct WorldPlugin {
 #[derive(Debug, Clone)]
 pub struct WorldConfig {
     pub database_path: String,
-    pub compiled_path: String,
-    pub data_path: String,
-    pub network_path: String,
+    pub road_map_path: String,
+    pub shapefile_path: String,
+    pub directed_graph_path: String,
 
     pub selected_colour: Color,
     pub normal_colour: Color,
@@ -46,42 +46,21 @@ impl Plugin for WorldPlugin {
 }
 
 fn init_road_map(config: Res<WorldConfig>, mut commands: Commands) {
-    let road_map_path = Path::new(&config.compiled_path);
-    let road_map = if let Ok(road_map) = crate::read_file(road_map_path) {
-        road_map
-    } else {
-        println!("File {:?} not found, creating...", road_map_path);
-        let road_map =
-            bevy_shapefile::from_shapefile(&config.data_path).expect("Could not read shapefile");
+    let road_map = load_road_map(&config);
 
-        crate::write_file(&road_map, road_map_path).expect("Could not write road_map");
+    let network = load_graph(config, &road_map);
 
-        road_map
-    };
-
-    let network_path = Path::new(&config.network_path);
-    let network = if let Ok(network) = crate::read_file(network_path) {
-        network
-    } else {
-        println!("File {:?} not found, creating...", network_path);
-        let network = nwb_to_road_network::preprocess_roadmap(&road_map, &config.database_path);
-        crate::write_file(&network, network_path).expect("Could not write network");
-        network
-    };
-
-    commands.insert_resource(road_map);
     println!("Inserted resources");
 
     println!("Status:");
-    println!("Nodes: {}", network.nodes.len());
-    println!("Edges: {}", network.edges.len());
+    println!("Nodes: {}", network.nodes().len());
+    println!("Edges: {}", network.edges().len());
 
     let out = network
-        .out_edges
+        .nodes()
         .iter()
-        .map(|x| x.len())
+        .map(|nn| nn.out_len())
         .collect::<Vec<_>>();
-    let ins = network.in_edges.iter().map(|x| x.len()).collect::<Vec<_>>();
 
     println!(
         "out_edges: [avg: {}, min: {}, max: {}",
@@ -89,19 +68,46 @@ fn init_road_map(config: Res<WorldConfig>, mut commands: Commands) {
         out.iter().min().unwrap(),
         out.iter().max().unwrap()
     );
-    println!(
-        "in_edges: [avg: {}, min: {}, max: {}",
-        ins.iter().sum::<usize>() as f32 / ins.len() as f32,
-        ins.iter().min().unwrap(),
-        ins.iter().max().unwrap()
-    );
 
-    // let next_level_edges = network::phase_1(3, &network);
-    // println!("Collected phase1 edges: {}", next_level_edges.len());
+    let next_level_edges = network::phase_1(30, &network);
+    println!("Collected phase1 edges: {}", next_level_edges.len());
 
+    commands.insert_resource(road_map);
     commands.insert_resource(network);
-    
+
     // commands.insert_resource(next_level_edges);
+}
+
+fn load_road_map(config: &Res<WorldConfig>) -> RoadMap {
+    let road_map_path = Path::new(&config.road_map_path);
+    let road_map = if let Ok(road_map) = crate::read_file(road_map_path) {
+        road_map
+    } else {
+        println!("File {:?} not found, creating...", road_map_path);
+        let road_map =
+            bevy_shapefile::from_shapefile(&config.shapefile_path).expect("Could not read shapefile");
+
+        crate::write_file(&road_map, road_map_path).expect("Could not write road_map");
+
+        road_map
+    };
+    road_map
+}
+
+fn load_graph(
+    config: Res<WorldConfig>,
+    road_map: &RoadMap,
+) -> DirectedNetworkGraph<nwb::NWBNetworkData> {
+    let network_path = Path::new(&config.directed_graph_path);
+    let network = if let Ok(network) = crate::read_file(network_path) {
+        network
+    } else {
+        println!("File {:?} not found, creating...", network_path);
+        let network = nwb::preprocess_roadmap(road_map, &config.database_path);
+        crate::write_file(&network, network_path).expect("Could not write network");
+        network
+    };
+    network
 }
 
 fn visible_entities(

@@ -26,7 +26,7 @@ impl From<RijkDriehoekCoordinate> for WGS84 {
         let reference_wgs84_x = 52.15517;
         let reference_wgs84_y = 5.387206;
 
-        let sum_n = (3235.65389 * dy)
+        let sum_n = (3_235.653_8 * dy)
             + (-32.58297 * dx.powi(2))
             + (-0.2475 * dy.powi(2))
             + (-0.84978 * dx.powi(2) * dy)
@@ -38,7 +38,7 @@ impl From<RijkDriehoekCoordinate> for WGS84 {
             + (0.00033 * dx.powi(4) * dy)
             + (-0.00012 * dx * dy);
 
-        let sum_e = (5260.52916 * dx)
+        let sum_e = (5_260.529_3 * dx)
             + (105.94684 * dx * dy)
             + (2.45656 * dx * dy.powi(2))
             + (-0.81885 * dx.powi(3))
@@ -89,7 +89,7 @@ impl From<WGS84> for RijkDriehoekCoordinate {
         let gen = |p, q| d_lattitude.powi(p) * d_longitude.powi(q);
 
         let x_transformations = [
-            190094.945, -114.221, -11832.228, -0.705, -32.391, -2.340, -0.008, -0.608, 0.148,
+            190_094.94, -114.221, -11832.228, -0.705, -32.391, -2.340, -0.008, -0.608, 0.148,
         ];
 
         let x_values = [
@@ -105,7 +105,7 @@ impl From<WGS84> for RijkDriehoekCoordinate {
         ];
 
         let y_transformations = [
-            0.433, 3638.893, 0.092, 309056.544, 73.077, -157.984, 59.788, -6.439, -0.032, -0.054,
+            0.433, 3638.893, 0.092, 309_056.53, 73.077, -157.984, 59.788, -6.439, -0.032, -0.054,
         ];
 
         let y_values = [
@@ -135,7 +135,7 @@ impl From<WGS84> for RijkDriehoekCoordinate {
         let rd_x_coordinate = reference_rd_x + calc_latt;
         let rd_y_coordinate = reference_rd_y + calc_long;
 
-        return RijkDriehoekCoordinate(rd_x_coordinate, rd_y_coordinate);
+        RijkDriehoekCoordinate(rd_x_coordinate, rd_y_coordinate)
     }
 }
 
