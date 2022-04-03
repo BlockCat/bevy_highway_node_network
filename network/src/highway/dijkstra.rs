@@ -1,22 +1,21 @@
 use std::collections::{BinaryHeap, HashMap, HashSet, VecDeque};
 
-use crate::{DirectedNetworkGraph, EdgeId, NetworkEdge, NetworkNode, NodeId};
+use crate::{DirectedNetworkGraph, EdgeId, NetworkData, NetworkEdge, NetworkNode, NodeId};
 
 use super::ComputedState;
+
+#[derive(Debug, PartialEq, PartialOrd)]
+struct ParentEntry {
+    parent: NodeId,
+    parent_edge: EdgeId,
+    parent_edge_distance: f32,
+}
 
 #[derive(Debug, PartialEq)]
 struct DijkstraNodeState {
     distance: f32,
     current: NodeId,
-    parent: (NodeId, (Option<EdgeId>, f32)),
-}
-
-#[derive(Debug)]
-struct VisitedState {
-    border_distance: f32,
-    reference_distance: f32,
-    distance: f32,
-    parents: HashMap<NodeId, (Option<EdgeId>, f32)>,
+    parent: ParentEntry,
 }
 
 impl PartialOrd for DijkstraNodeState {
@@ -45,27 +44,38 @@ impl Ord for DijkstraNodeState {
 
 impl Eq for DijkstraNodeState {}
 
-pub fn calculate_edges<V: NetworkNode, E: NetworkEdge>(
+#[derive(Debug)]
+struct VisitedState {
+    border_distance: f32,
+    reference_distance: f32,
+    distance: f32,
+    parents: HashMap<NodeId, (Option<EdgeId>, f32)>,
+}
+
+pub fn calculate_edges<D: NetworkData>(
     s0: NodeId,
     computed: &ComputedState,
-    network: &DirectedNetworkGraph<V, E>,
-) -> HashSet<EdgeId> {
+    network: &DirectedNetworkGraph<D>,
+) -> Vec<EdgeId> {
     let (sorted_order, dag) = create_directed_acyclic_graph(s0, computed, network);
     let edges = collect_next_level_edges(s0, sorted_order, dag, computed);
 
     edges
 }
 
-fn create_directed_acyclic_graph<V: NetworkNode, E: NetworkEdge>(
+fn create_directed_acyclic_graph<D: NetworkData>(
     s0: NodeId,
     computed: &ComputedState,
-    network: &DirectedNetworkGraph<V, E>,
-) -> (VecDeque<(NodeId, f32)>, HashMap<NodeId, VisitedState>) {
-    let mut heap: BinaryHeap<DijkstraNodeState> = BinaryHeap::new();
+    network: &DirectedNetworkGraph<D>,
+) -> (
+    VecDeque<(NodeId, (EdgeId, f32))>,
+    HashMap<NodeId, VisitedState>,
+) {
+    let mut heap: BinaryHeap<DijkstraNodeState> = BinaryHeap::with_capacity(2000);
 
-    let mut visited: HashMap<NodeId, VisitedState> = HashMap::new();
+    let mut visited: HashMap<NodeId, VisitedState> = HashMap::with_capacity(3000);
 
-    let mut settled_order = VecDeque::new();
+    let mut settled_order = VecDeque::with_capacity(3000);
 
     // println!("Continue growing the DAG, and stop when there are no more active nodes");
 
@@ -107,21 +117,24 @@ fn create_directed_acyclic_graph<V: NetworkNode, E: NetworkEdge>(
             },
         );
 
-        settled_order.push_front((state.current, state.distance));
+        settled_order.push_front((state.current, (state.parent.parent_edge, state.distance)));
 
         let should_abort =
             (reference_distance + computed.backward.radius(state.current)) < state.distance;
 
         if !should_abort {
-            for child_edge_id in &network.out_edges[*state.current] {
-                let child_edge = &network.edges[**child_edge_id];
+            for (child_edge, id) in network.out_edges(state.current) {
                 let child = child_edge.target();
                 let next_distance = state.distance + child_edge.distance();
 
                 heap.push(DijkstraNodeState {
                     current: child,
-                    parent: (state.current, (Some(*child_edge_id), child_edge.distance())),
                     distance: next_distance,
+                    parent: ParentEntry {
+                        parent: state.current,
+                        parent_edge_distance: child_edge.distance(),
+                        parent_edge: id.into(),
+                    },
                 });
             }
             // } else {
@@ -135,19 +148,20 @@ fn create_directed_acyclic_graph<V: NetworkNode, E: NetworkEdge>(
             // );
         }
     }
+
     (settled_order, visited)
 }
 
 fn collect_next_level_edges(
     s0: NodeId,
-    mut sorted_nodes: VecDeque<(NodeId, f32)>,
+    mut sorted_nodes: VecDeque<(NodeId, (EdgeId, f32))>,
     nodes: HashMap<NodeId, VisitedState>,
     computed: &ComputedState,
-) -> HashSet<EdgeId> {
-    let mut collected_edges = HashSet::new();
+) -> Vec<EdgeId> {
+    let mut collected_edges = Vec::new();
     let mut tentative_slacks = HashMap::new();
 
-    while let Some((node, distance)) = sorted_nodes.pop_front() {
+    while let Some((node, (edge, distance))) = sorted_nodes.pop_front() {
         if distance <= computed.forward.radius(s0) {
             return collected_edges;
         }
@@ -155,11 +169,12 @@ fn collect_next_level_edges(
         let slack = *tentative_slacks
             .entry(node)
             .or_insert_with(|| computed.backward.radius(node));
+
         for (parent, (edge_id, distance)) in &nodes[&node].parents {
             let slack_parent = slack - distance;
 
             if slack_parent < 0.0 {
-                collected_edges.insert(edge_id.unwrap());
+                collected_edges.push(edge_id.unwrap());
             }
 
             let tentative_slack_parent = tentative_slacks
@@ -178,28 +193,40 @@ fn caculate_distances(
     state: &mut DijkstraNodeState,
     heap: &mut BinaryHeap<DijkstraNodeState>,
 ) -> (f32, f32, HashMap<NodeId, (Option<EdgeId>, f32)>) {
-    let mut parent_border_distance = visited[&state.parent.0].border_distance;
-    let mut parent_reference_distance = visited[&state.parent.0].reference_distance;
-    let mut parents = HashMap::from([state.parent]);
+    let mut parent_border_distance = visited[&state.parent.parent].border_distance;
+    let mut parent_reference_distance = visited[&state.parent.parent].reference_distance;
+    let mut parents = HashMap::from([(
+        state.parent.parent,
+        (
+            Some(state.parent.parent_edge),
+            state.parent.parent_edge_distance,
+        ),
+    )]);
     while let Some(peek) = heap
         .peek()
         .filter(|next| next.current == state.current && next.distance == state.distance)
     {
-        let parent_visited = &visited[&peek.parent.0];
+        let parent_visited = &visited[&peek.parent.parent];
         parent_border_distance = f32::max(parent_border_distance, parent_visited.border_distance);
 
         parent_reference_distance =
             f32::max(parent_reference_distance, parent_visited.reference_distance);
 
-        parents.insert(peek.parent.0, peek.parent.1);
+        parents.insert(
+            peek.parent.parent,
+            (
+                Some(peek.parent.parent_edge),
+                peek.parent.parent_edge_distance,
+            ),
+        );
         *state = heap.pop().unwrap();
     }
     (parent_border_distance, parent_reference_distance, parents)
 }
 
-fn initialize_heap<V: NetworkNode, E: NetworkEdge>(
+fn initialize_heap<D: NetworkData>(
     s0: NodeId,
-    network: &DirectedNetworkGraph<V, E>,
+    network: &DirectedNetworkGraph<D>,
     heap: &mut BinaryHeap<DijkstraNodeState>,
     visited: &mut HashMap<NodeId, VisitedState>,
 ) {
@@ -212,22 +239,24 @@ fn initialize_heap<V: NetworkNode, E: NetworkEdge>(
             parents: HashMap::from([(s0, (None, 0.0))]),
         },
     );
-    for id in &network.out_edges[*s0] {
-        let edge = &network.edges[**id];
-
+    for (edge, id) in network.out_edges(s0) {
         heap.push(DijkstraNodeState {
             distance: edge.distance(),
             current: edge.target(),
-            parent: (s0, (Some(*id), edge.distance())),
+            parent: ParentEntry {
+                parent: s0,
+                parent_edge_distance: edge.distance(),
+                parent_edge: id.into(),
+            },
         });
     }
 }
 
-fn border_distance(
+fn border_distance<A>(
     s0: NodeId,
     node: NodeId,
     distance: f32,
-    parents: &HashMap<NodeId, (Option<EdgeId>, f32)>,
+    parents: &HashMap<NodeId, A>,
     computed: &ComputedState,
     parent_border_distance: f32,
 ) -> f32 {
@@ -240,11 +269,11 @@ fn border_distance(
     f32::max(min_border_distance, parent_border_distance)
 }
 
-fn reference_distance(
+fn reference_distance<A>(
     distance: f32,
     border_distance: f32,
     max_parent_reference_distance: f32,
-    parents: &HashMap<NodeId, (Option<EdgeId>, f32)>,
+    parents: &HashMap<NodeId, A>,
     visited: &HashMap<NodeId, VisitedState>,
 ) -> f32 {
     if max_parent_reference_distance == f32::INFINITY && distance > border_distance {
@@ -265,31 +294,16 @@ mod tests {
     use std::collections::HashSet;
 
     use crate::{
-        create_network,
         highway::dijkstra::{collect_next_level_edges, create_directed_acyclic_graph},
-        tests::{create_undirected_network, TestEdge, TestNode},
+        tests::{create_ref_network_1, create_undirected_network, TestEdge, TestNode},
         DirectedNetworkGraph, EdgeId, NetworkEdge, NodeId,
     };
 
     use super::ComputedState;
 
-    // https://www.baeldung.com/wp-content/uploads/2017/01/initial-graph.png
-    fn create_network() -> DirectedNetworkGraph<TestNode, TestEdge> {
-        create_network!(
-            0 => 1; 10.0,
-            0 => 2; 15.0,
-            1 => 3; 12.0,
-            1 => 5; 15.0,
-            2 => 4; 10.0,
-            3 => 4; 2.0,
-            3 => 5; 1.0,
-            5 => 4; 5.0
-        )
-    }
-
     #[test]
     fn forward_test() {
-        let network = create_network();
+        let network = create_ref_network_1();
         let computed = ComputedState::new(3, &network);
 
         create_directed_acyclic_graph(NodeId(0), &computed, &network);
@@ -313,8 +327,8 @@ mod tests {
 
         println!("Added:");
         for id in next_edges {
-            let edge = network.edges[*id];
-            println!("{} -- {}", *edge.source(), *edge.target());
+            let edge = network.edge(id);
+            println!("ID: {:?} - {:?}", id, edge);
         }
     }
 
@@ -331,14 +345,14 @@ mod tests {
             next_edges.extend(edges);
         }
 
-        let mut next_edges = next_edges
-            .into_iter()
-            .map(|x| network.edges[*x])
-            .collect::<Vec<_>>();
-        next_edges.sort_by_key(|x| (x.0, x.1));
+        let mut next_edges = next_edges.into_iter().collect::<Vec<_>>();
+
+        next_edges.sort();
+
         println!("Added:");
-        for edge in next_edges {
-            println!("{} -- {}", *edge.source(), *edge.target());
+        for id in next_edges {
+            let edge = network.edge(id);
+            println!("ID: {:?} - {:?}", id, edge);
         }
     }
 }

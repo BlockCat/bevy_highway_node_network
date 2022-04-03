@@ -12,7 +12,7 @@ use world::{WorldConfig, WorldPlugin};
 
 mod camera;
 mod geo_coords;
-mod nwb_to_road_network;
+mod nwb;
 mod world;
 
 fn main() {
@@ -24,9 +24,9 @@ fn main() {
         .add_plugin(WorldPlugin {
             config: WorldConfig {
                 database_path: "data/database.db".into(),
-                data_path: "data/01-03-2022/Wegvakken/Wegvakken.shp".into(),
-                compiled_path: "data/compiled.data".into(),
-                network_path: "data/network.graph".into(),
+                shapefile_path: "data/01-03-2022/Wegvakken/Wegvakken.shp".into(),
+                road_map_path: "data/road_map.data".into(),
+                directed_graph_path: "data/directed_graph.graph".into(),
 
                 selected_colour: Color::GREEN,
                 normal_colour: Color::WHITE,

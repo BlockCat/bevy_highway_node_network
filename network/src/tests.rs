@@ -1,48 +1,29 @@
-use crate::{DirectedNetworkGraph, EdgeId, NetworkEdge, NetworkNode, NodeId};
+use crate::{
+    builder::{EdgeBuilder, EdgeDirection, NodeBuilder},
+    DirectedNetworkGraph, EdgeId, NetworkEdge, NetworkNode, NodeId,
+};
 use std::hash::Hash;
 
 #[macro_export]
 macro_rules! create_network {
-    ($($a:literal => $b:literal; $c: expr),+) => {
+    ($s:literal..$e:literal, $($a:literal => $b:literal; $c: expr),+) => {
     {
-        use std::collections::{HashSet, HashMap};
-        use crate::{NetworkNode, NetworkEdge};
+        let mut builder = crate::builder::DirectedNetworkBuilder::<TestNode, TestEdge>::new();
 
-        let mut nodes = HashSet::new();
-        let mut edges = Vec::new();
-        $(
-            nodes.insert(TestNode($a));
-            nodes.insert(TestNode($b));
 
-            edges.push(TestEdge($a, $b, $c));
-        )+
-
-        let mut nodes = nodes.into_iter().collect::<Vec<_>>();
-        nodes.sort_by_key(|x| x.0);
-
-        let mut out_edges = HashMap::<NodeId, Vec<EdgeId>>::new();
-        let mut in_edges = HashMap::<NodeId, Vec<EdgeId>>::new();
-
-        for edge in edges.iter().enumerate() {
-            out_edges
-                .entry(edge.1.source())
-                .or_default()
-                .push(EdgeId(edge.0));
-            in_edges
-                .entry(edge.1.target())
-                .or_default()
-                .push(EdgeId(edge.0));
+        for x in $s..=$e {
+            builder.add_node(TestNode(x));
         }
 
-        let out_edges = nodes.iter().map(|x| out_edges.get(&x.id()).cloned().unwrap_or_default()).collect();
-        let in_edges = nodes.iter().map(|x| in_edges.get(&x.id()).cloned().unwrap_or_default()).collect();
+        $({
+            let source = builder.add_node(TestNode($a));
+            let target = builder.add_node(TestNode($b));
 
-        DirectedNetworkGraph {
-            nodes,
-            edges,
-            out_edges,
-            in_edges,
-        }
+            builder.add_edge(TestEdge::forward(source, target, $c));
+
+        })+
+
+        builder.build::<()>()
     }
     };
 }
@@ -50,8 +31,16 @@ macro_rules! create_network {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct TestNode(pub usize);
 
+impl NodeBuilder for TestNode {
+    type Data = ();
+
+    fn data(&self) -> Self::Data {
+        ()
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq)]
-pub struct TestEdge(pub usize, pub usize, pub f32);
+pub struct TestEdge(pub NodeId, pub NodeId, pub f32, EdgeDirection);
 
 impl Eq for TestEdge {}
 
@@ -63,68 +52,71 @@ impl Hash for TestEdge {
     }
 }
 
-impl NetworkNode for TestNode {
-    fn id(&self) -> crate::NodeId {
-        self.0.into()
-    }
-}
+impl EdgeBuilder for TestEdge {
+    type Data = ();
 
-impl NetworkEdge for TestEdge {
-    fn source(&self) -> crate::NodeId {
-        self.0.into()
+    fn data(&self) -> Self::Data {
+        ()
     }
 
-    fn target(&self) -> crate::NodeId {
+    fn source(&self) -> NodeId {
+        self.0.into()
+    }
+
+    fn target(&self) -> NodeId {
         self.1.into()
     }
 
-    fn distance(&self) -> f32 {
+    fn weight(&self) -> f32 {
         self.2
+    }
+
+    fn direction(&self) -> crate::builder::EdgeDirection {
+        self.3
+    }
+}
+
+impl TestEdge {
+    pub fn forward(source: NodeId, target: NodeId, weight: f32) -> Self {
+        Self(source, target, weight, EdgeDirection::Forward)
     }
 }
 
 // https://www.baeldung.com/wp-content/uploads/2017/01/initial-graph.png
-fn create_ref_network() -> DirectedNetworkGraph<TestNode, TestEdge> {
-    DirectedNetworkGraph {
-        nodes: vec![
-            TestNode(0), // A
-            TestNode(1), // B
-            TestNode(2), // C
-            TestNode(3), // D
-            TestNode(4), // E
-            TestNode(5), // F
-        ],
-        edges: vec![
-            TestEdge(0, 1, 10.0), // A -> B | 0
-            TestEdge(0, 2, 15.0), // A -> C | 1
-            TestEdge(1, 3, 5.0),  // B -> D | 2
-            TestEdge(1, 5, 15.0), // B -> F | 3
-            TestEdge(2, 4, 10.0), // C -> E | 4
-            TestEdge(3, 4, 2.0),  // D -> E | 5
-            TestEdge(3, 5, 1.0),  // D -> F | 6
-            TestEdge(5, 4, 5.0),  // F -> E | 7
-        ],
-        out_edges: vec![
-            vec![EdgeId(0), EdgeId(1)],
-            vec![EdgeId(2), EdgeId(3)],
-            vec![EdgeId(4)],
-            vec![EdgeId(5), EdgeId(6)],
-            vec![],
-            vec![EdgeId(7)],
-        ],
-        in_edges: vec![
-            vec![],                                // A
-            vec![EdgeId(0)],                       // B
-            vec![EdgeId(1)],                       // C
-            vec![EdgeId(2)],                       // D
-            vec![EdgeId(4), EdgeId(5), EdgeId(7)], // E
-            vec![EdgeId(3), EdgeId(6)],            // F
-        ],
-    }
+pub fn create_ref_network_1() -> DirectedNetworkGraph<()> {
+    let nodes = vec![
+        NetworkNode::new(0, 2, 2, 2),
+        NetworkNode::new(2, 4, 4, 5),
+        NetworkNode::new(5, 6, 6, 7),
+        NetworkNode::new(7, 9, 9, 10),
+        NetworkNode::new(10, 10, 10, 13),
+        NetworkNode::new(13, 14, 14, 16),
+    ];
+    let edges = vec![
+        NetworkEdge::new(1u32.into(), 10.0), // A -> B
+        NetworkEdge::new(2u32.into(), 15.0), // A -> C
+        NetworkEdge::new(3u32.into(), 12.0), // B -> D
+        NetworkEdge::new(5u32.into(), 15.0), // B -> F
+        NetworkEdge::new(0u32.into(), 10.0), // A <- B
+        NetworkEdge::new(4u32.into(), 10.0), // C -> E
+        NetworkEdge::new(0u32.into(), 15.0), // A <- C
+        NetworkEdge::new(4u32.into(), 2.0),  // D -> E
+        NetworkEdge::new(5u32.into(), 1.0),  // D -> F
+        NetworkEdge::new(1u32.into(), 12.0), // B <- D
+        NetworkEdge::new(2u32.into(), 10.0), // C <- E
+        NetworkEdge::new(3u32.into(), 2.0),  // D <- E
+        NetworkEdge::new(5u32.into(), 5.0),  // F <- E
+        NetworkEdge::new(4u32.into(), 5.0),  // F -> E
+        NetworkEdge::new(1u32.into(), 15.0), // B <- F
+        NetworkEdge::new(3u32.into(), 1.0),  // D <- F
+    ];
+
+    DirectedNetworkGraph::new(nodes, edges, ())
 }
 
-pub fn create_undirected_network() -> DirectedNetworkGraph<TestNode, TestEdge> {
+pub fn create_undirected_network() -> DirectedNetworkGraph<()> {
     create_network!(
+        0..16,
         0 => 1; 3.0,
         1 => 0; 3.0,
         1 => 2; 2.0,
@@ -179,20 +171,20 @@ pub fn create_undirected_network() -> DirectedNetworkGraph<TestNode, TestEdge> {
 
 #[test]
 fn create_test() {
-    let reference_network = create_ref_network();
+    let reference_network = create_ref_network_1();
+    // Gotta put it in weird order so it sees creation of nodes in correct order, the numbers are labels after all.
     let network = create_network!(
+        0..5,
         0 => 1; 10.0,
         0 => 2; 15.0,
-        1 => 3; 5.0,
+        1 => 3; 12.0,
         1 => 5; 15.0,
         2 => 4; 10.0,
         3 => 4; 2.0,
         3 => 5; 1.0,
         5 => 4; 5.0
     );
-
-    assert_eq!(reference_network.nodes, network.nodes);
-    assert_eq!(reference_network.edges, network.edges);
-    assert_eq!(reference_network.out_edges, network.out_edges);
-    assert_eq!(reference_network.in_edges, network.in_edges);
+    assert_eq!(network.nodes(), reference_network.nodes(), "Fails on nodes");
+    assert_eq!(network.edges(), reference_network.edges(), "Fails on edges");
+    assert_eq!(network, reference_network);
 }
