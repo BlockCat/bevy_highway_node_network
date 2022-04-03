@@ -69,7 +69,6 @@ fn init_road_map(config: Res<WorldConfig>, mut commands: Commands) {
         network
     };
 
-    commands.insert_resource(road_map);
     println!("Inserted resources");
 
     println!("Status:");
@@ -96,11 +95,12 @@ fn init_road_map(config: Res<WorldConfig>, mut commands: Commands) {
         ins.iter().max().unwrap()
     );
 
-    // let next_level_edges = network::phase_1(3, &network);
-    // println!("Collected phase1 edges: {}", next_level_edges.len());
+    let next_level_edges = network::phase_1(30, &network);
+    println!("Collected phase1 edges: {}", next_level_edges.len());
 
+    commands.insert_resource(road_map);
     commands.insert_resource(network);
-    
+
     // commands.insert_resource(next_level_edges);
 }
 

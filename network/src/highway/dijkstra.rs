@@ -60,7 +60,7 @@ fn create_directed_acyclic_graph<V: NetworkNode, E: NetworkEdge>(
     s0: NodeId,
     computed: &ComputedState,
     network: &DirectedNetworkGraph<V, E>,
-) -> (VecDeque<NodeId>, HashMap<NodeId, VisitedState>) {
+) -> (VecDeque<(NodeId, f32)>, HashMap<NodeId, VisitedState>) {
     let mut heap: BinaryHeap<DijkstraNodeState> = BinaryHeap::new();
 
     let mut visited: HashMap<NodeId, VisitedState> = HashMap::new();
@@ -107,10 +107,10 @@ fn create_directed_acyclic_graph<V: NetworkNode, E: NetworkEdge>(
             },
         );
 
-        settled_order.push_front(state.current);
+        settled_order.push_front((state.current, state.distance));
 
         let should_abort =
-            (reference_distance + computed.backward.radius[*state.current]) < state.distance;
+            (reference_distance + computed.backward.radius(state.current)) < state.distance;
 
         if !should_abort {
             for child_edge_id in &network.out_edges[*state.current] {
@@ -140,21 +140,21 @@ fn create_directed_acyclic_graph<V: NetworkNode, E: NetworkEdge>(
 
 fn collect_next_level_edges(
     s0: NodeId,
-    mut sorted_nodes: VecDeque<NodeId>,
+    mut sorted_nodes: VecDeque<(NodeId, f32)>,
     nodes: HashMap<NodeId, VisitedState>,
     computed: &ComputedState,
 ) -> HashSet<EdgeId> {
     let mut collected_edges = HashSet::new();
     let mut tentative_slacks = HashMap::new();
 
-    while let Some(node) = sorted_nodes.pop_front() {
-        if computed.forward.neighbours[*s0].contains_key(&node) {
+    while let Some((node, distance)) = sorted_nodes.pop_front() {
+        if distance <= computed.forward.radius(s0) {
             return collected_edges;
         }
 
         let slack = *tentative_slacks
             .entry(node)
-            .or_insert_with(|| computed.backward.radius[*node]);
+            .or_insert_with(|| computed.backward.radius(node));
         for (parent, (edge_id, distance)) in &nodes[&node].parents {
             let slack_parent = slack - distance;
 
@@ -164,7 +164,7 @@ fn collect_next_level_edges(
 
             let tentative_slack_parent = tentative_slacks
                 .entry(*parent)
-                .or_insert_with(|| computed.backward.radius[**parent]);
+                .or_insert_with(|| computed.backward.radius(*parent));
 
             *tentative_slack_parent = f32::min(*tentative_slack_parent, slack_parent);
         }
@@ -232,7 +232,7 @@ fn border_distance(
     parent_border_distance: f32,
 ) -> f32 {
     let min_border_distance = if parents.contains_key(&s0) {
-        distance + computed.forward.radius[*node]
+        distance + computed.forward.radius(node)
     } else {
         0.0
     };
@@ -292,18 +292,6 @@ mod tests {
         let network = create_network();
         let computed = ComputedState::new(3, &network);
 
-        println!("\nRadius: {:?}", computed.forward.radius);
-
-        println!("\nForward:");
-        for ele in computed.forward.neighbours.iter().enumerate() {
-            println!("{}, {:?}", ele.0, ele.1.keys());
-        }
-
-        println!("\nBackward:");
-        for ele in computed.backward.neighbours.iter().enumerate() {
-            println!("{}, {:?}", ele.0, ele.1.keys());
-        }
-
         create_directed_acyclic_graph(NodeId(0), &computed, &network);
     }
 
@@ -313,19 +301,6 @@ mod tests {
         let computed = super::ComputedState::new(4, &network);
         let s0 = NodeId(12);
         let edges = create_directed_acyclic_graph(s0, &computed, &network);
-
-        println!("\nRadius: {:?}", computed.forward.radius);
-        println!("\nRadius: {:?}", computed.backward.radius);
-
-        println!("\nForward:");
-        for ele in computed.forward.neighbours.iter().enumerate() {
-            println!("{}, {:?}", ele.0, ele.1.keys());
-        }
-
-        println!("\nBackward:");
-        for ele in computed.backward.neighbours.iter().enumerate() {
-            println!("{}, {:?}", ele.0, ele.1.keys());
-        }
 
         println!("DAG:");
         for (n, i) in &edges.1 {

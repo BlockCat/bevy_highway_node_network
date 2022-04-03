@@ -38,19 +38,13 @@ impl PathParent {
 
 #[derive(Debug)]
 pub struct Neighbourhood {
-    pub neighbours: Vec<HashMap<NodeId, Option<PathParent>>>,
-    pub radius: Vec<f32>,
+    radius: Vec<f32>,
 }
 
 impl Neighbourhood {
-    pub fn contains(&self, node: NodeId, neigbhour: NodeId) -> bool {
-        self.neighbours[*node].contains_key(&neigbhour)
-    }
-
-    pub fn get(&self, node: NodeId, neigbhour: NodeId) -> Option<&PathParent> {
-        self.neighbours[*node]
-            .get(&neigbhour)
-            .and_then(Option::as_ref)
+    #[inline]
+    pub fn radius(&self, node: NodeId) -> f32 {
+        self.radius[*node]
     }
 }
 
@@ -60,15 +54,14 @@ impl ForwardNeighbourhood {
         network: &DirectedNetworkGraph<V, E>,
     ) -> Self {
         let mut radius = Vec::with_capacity(network.nodes.len());
-        let mut neighbours = Vec::with_capacity(network.nodes.len());
 
         network
             .nodes
             .par_iter()
-            .map(|node| find_forward_neighbourhood(node.id(), size, &network))
-            .unzip_into_vecs(&mut radius, &mut neighbours);
+            .map(|node| find_forward_neighbourhood_radius(node.id(), size, &network).unwrap())
+            .collect_into_vec(&mut radius);
 
-        ForwardNeighbourhood(Neighbourhood { neighbours, radius })
+        ForwardNeighbourhood(Neighbourhood { radius })
     }
 }
 
@@ -78,70 +71,39 @@ impl BackwardNeighbourhood {
         network: &DirectedNetworkGraph<V, E>,
     ) -> Self {
         let mut radius = Vec::with_capacity(network.nodes.len());
-        let mut neighbours = Vec::with_capacity(network.nodes.len());
 
         network
             .nodes
             .par_iter()
-            .map(|node| find_backward_neighbourhood(node.id(), size, &network))
-            .unzip_into_vecs(&mut radius, &mut neighbours);
+            .map(|node| find_backward_neighbourhood(node.id(), size, &network).unwrap())
+            .collect_into_vec(&mut radius);
 
-        BackwardNeighbourhood(Neighbourhood { neighbours, radius })
+        BackwardNeighbourhood(Neighbourhood { radius })
     }
 }
 
-fn find_forward_neighbourhood<V: NetworkNode, E: NetworkEdge>(
+fn find_forward_neighbourhood_radius<V: NetworkNode, E: NetworkEdge>(
     node: NodeId,
     size: usize,
     network: &DirectedNetworkGraph<V, E>,
-) -> (f32, HashMap<NodeId, Option<PathParent>>) {
-    let mut iterator = network.forward_iterator(node);
-
-    let map = iterator.by_ref().take(size).collect::<Vec<_>>();
-    let distance = iterator.distance;
-
-    let map = map
-        .into_iter()
-        .chain(iterator.take_while(|x| x.1 <= distance))
-        .map(|(node, distance, edge)| {
-            (
-                node,
-                edge.map(|edge| PathParent {
-                    distance,
-                    parent: network.edges[*edge].source(),
-                }),
-            )
-        })
-        .collect::<HashMap<_, _>>();
-
-    (distance, map)
+) -> Option<f32> {
+    network
+        .forward_iterator(node)
+        .take(size)
+        .last()
+        .map(|x| x.1)
 }
 
 fn find_backward_neighbourhood<V: NetworkNode, E: NetworkEdge>(
     node: NodeId,
     size: usize,
     network: &DirectedNetworkGraph<V, E>,
-) -> (f32, HashMap<NodeId, Option<PathParent>>) {
-    let mut iterator = network.backward_iterator(node);
-
-    let map = iterator.by_ref().take(size).collect::<Vec<_>>();
-    let distance = iterator.distance;
-
-    let map = map
-        .into_iter()
-        .chain(iterator.take_while(|x| x.1 <= distance))
-        .map(|(node, distance, edge)| {
-            (
-                node,
-                edge.map(|edge| PathParent {
-                    distance,
-                    parent: network.edges[*edge].target(),
-                }),
-            )
-        })
-        .collect();
-
-    (distance, map)
+) -> Option<f32> {
+    network
+        .backward_iterator(node)
+        .take(size)
+        .last()
+        .map(|x| x.1)
 }
 
 #[cfg(test)]
@@ -174,52 +136,52 @@ mod tests {
 
         assert_eq!(&vec![15.0, 6.0, 10.0, 2.0, 0.0, 5.0], radius);
 
-        let network = &forward.neighbours;
+        // let network = &forward.neighbours;
 
-        assert_eq!(
-            HashMap::from([
-                (NodeId(0), None),
-                (NodeId(1), Some(PathParent::new(10.0, NodeId(0)))),
-                (NodeId(2), Some(PathParent::new(15.0, NodeId(0)))),
-                (NodeId(3), Some(PathParent::new(15.0, NodeId(1)))),
-            ]),
-            network[0]
-        );
+        // assert_eq!(
+        //     HashMap::from([
+        //         (NodeId(0), None),
+        //         (NodeId(1), Some(PathParent::new(10.0, NodeId(0)))),
+        //         (NodeId(2), Some(PathParent::new(15.0, NodeId(0)))),
+        //         (NodeId(3), Some(PathParent::new(15.0, NodeId(1)))),
+        //     ]),
+        //     network[0]
+        // );
 
-        assert_eq!(
-            HashMap::from([
-                (NodeId(1), None),
-                (NodeId(3), Some(PathParent::new(5.0, NodeId(1)))),
-                (NodeId(5), Some(PathParent::new(6.0, NodeId(3)))),
-            ]),
-            network[1]
-        );
+        // assert_eq!(
+        //     HashMap::from([
+        //         (NodeId(1), None),
+        //         (NodeId(3), Some(PathParent::new(5.0, NodeId(1)))),
+        //         (NodeId(5), Some(PathParent::new(6.0, NodeId(3)))),
+        //     ]),
+        //     network[1]
+        // );
 
-        assert_eq!(
-            HashMap::from([
-                (NodeId(2), None),
-                (NodeId(4), Some(PathParent::new(10.0, NodeId(2)))),
-            ]),
-            network[2]
-        );
+        // assert_eq!(
+        //     HashMap::from([
+        //         (NodeId(2), None),
+        //         (NodeId(4), Some(PathParent::new(10.0, NodeId(2)))),
+        //     ]),
+        //     network[2]
+        // );
 
-        assert_eq!(
-            HashMap::from([
-                (NodeId(3), None),
-                (NodeId(4), Some(PathParent::new(2.0, NodeId(3)))),
-                (NodeId(5), Some(PathParent::new(1.0, NodeId(3)))),
-            ]),
-            network[3]
-        );
+        // assert_eq!(
+        //     HashMap::from([
+        //         (NodeId(3), None),
+        //         (NodeId(4), Some(PathParent::new(2.0, NodeId(3)))),
+        //         (NodeId(5), Some(PathParent::new(1.0, NodeId(3)))),
+        //     ]),
+        //     network[3]
+        // );
 
-        assert_eq!(HashMap::from([(NodeId(4), None),]), network[4]);
+        // assert_eq!(HashMap::from([(NodeId(4), None),]), network[4]);
 
-        assert_eq!(
-            HashMap::from([
-                (NodeId(5), None),
-                (NodeId(4), Some(PathParent::new(5.0, NodeId(5)))),
-            ]),
-            network[5]
-        );
+        // assert_eq!(
+        //     HashMap::from([
+        //         (NodeId(5), None),
+        //         (NodeId(4), Some(PathParent::new(5.0, NodeId(5)))),
+        //     ]),
+        //     network[5]
+        // );
     }
 }

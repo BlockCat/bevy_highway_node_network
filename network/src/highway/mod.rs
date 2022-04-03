@@ -1,22 +1,37 @@
-use std::collections::HashSet;
-
-use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
-
-mod dijkstra;
-
 use crate::{
     BackwardNeighbourhood, DirectedNetworkGraph, ForwardNeighbourhood, NetworkEdge, NetworkNode,
 };
+use std::collections::HashSet;
 
-pub fn phase_1<V: NetworkNode, E: NetworkEdge>(size: usize, network: &DirectedNetworkGraph<V, E>) -> HashSet<crate::EdgeId> {
+mod dijkstra;
+
+pub fn phase_1<V: NetworkNode, E: NetworkEdge>(
+    size: usize,
+    network: &DirectedNetworkGraph<V, E>,
+) -> HashSet<crate::EdgeId> {
+    println!("Start computing (forward backward)");
     let computed = ComputedState::new(size, network);
 
+    println!("Finished computing (forward backward)");
+    println!(
+        "Start computing (edges collections: {})",
+        network.nodes.len()
+    );
 
-    network
+    let edges = network
         .nodes
-        .par_iter()
-        .flat_map_iter(|node| dijkstra::calculate_edges(node.id(), &computed, network).into_iter())
-        .collect::<HashSet<_>>()
+        .iter()
+        .enumerate()
+        .inspect(|x| {
+            if x.0 % 1000 == 0 {
+                println!("{:?}", x.0);
+            }
+        })
+        .map(|x| x.1)
+        .flat_map(|node| dijkstra::calculate_edges(node.id(), &computed, network).into_iter())
+        .collect::<HashSet<_>>();
+    println!("Finished computing (edges collections)");
+    edges
 }
 
 pub struct ComputedState {
