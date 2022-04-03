@@ -1,6 +1,6 @@
 use crate::{
     builder::{EdgeBuilder, EdgeDirection, NodeBuilder},
-    DirectedNetworkGraph, EdgeId, NetworkEdge, NetworkNode, NodeId,
+    DirectedNetworkGraph, NetworkEdge, NetworkNode, NodeId,
 };
 use std::hash::Hash;
 

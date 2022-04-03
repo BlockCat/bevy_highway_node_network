@@ -4,7 +4,6 @@ use network::{
     DirectedNetworkGraph, EdgeId, NetworkData, NodeId,
 };
 use rusqlite::{
-    params,
     types::{FromSql, FromSqlError},
     Connection,
 };
@@ -100,7 +99,7 @@ impl FromSql for RijRichting {
         let rij_richting = rij_richting
             .chars()
             .next()
-            .ok_or_else(|| FromSqlError::InvalidType)?;
+            .ok_or(FromSqlError::InvalidType)?;
         match rij_richting {
             'H' => Ok(RijRichting(EdgeDirection::Forward)),
             'T' => Ok(RijRichting(EdgeDirection::Backward)),
@@ -120,7 +119,7 @@ pub fn preprocess_roadmap<P: AsRef<Path>>(
     let mut builder: DirectedNetworkBuilder<RoadNode, RoadEdge> = DirectedNetworkBuilder::new();
     let roads = &roadmap.roads;
 
-    let mut statement = database
+    let statement = database
         .prepare(
             "SELECT id,junction_id_begin, junction_id_end, rij_richting FROM wegvakken",
         )

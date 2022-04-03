@@ -32,7 +32,7 @@ impl Plugin for CameraPlugin {
 
 fn load_camera(mut commands: Commands) {
     let utrecht = WGS84 {
-        latitude: 52.0935969,
+        latitude: 52.093_597,
         longitude: 5.1134345,
     };
     let utrecht = RijkDriehoekCoordinate::from(utrecht);

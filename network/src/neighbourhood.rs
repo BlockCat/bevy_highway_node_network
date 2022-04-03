@@ -45,7 +45,7 @@ impl ForwardNeighbourhood {
             .nodes()
             .par_iter()
             .enumerate()
-            .map(|(id, _)| find_forward_neighbourhood_radius(id.into(), size, &network).unwrap())
+            .map(|(id, _)| find_forward_neighbourhood_radius(id.into(), size, network).unwrap())
             .collect_into_vec(&mut radius);
 
         ForwardNeighbourhood(Neighbourhood { radius })
@@ -60,7 +60,7 @@ impl BackwardNeighbourhood {
             .nodes()
             .par_iter()
             .enumerate()
-            .map(|(id, _)| find_backward_neighbourhood_radius(id.into(), size, &network).unwrap())
+            .map(|(id, _)| find_backward_neighbourhood_radius(id.into(), size, network).unwrap())
             .collect_into_vec(&mut radius);
 
         BackwardNeighbourhood(Neighbourhood { radius })

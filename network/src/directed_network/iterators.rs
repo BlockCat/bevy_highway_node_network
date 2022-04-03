@@ -1,4 +1,4 @@
-use crate::{DirectedNetworkGraph, EdgeId, NetworkData, NetworkEdge, NodeId};
+use crate::{DirectedNetworkGraph, NetworkData, NodeId};
 use std::{
     cmp::Reverse,
     collections::{BinaryHeap, HashSet},

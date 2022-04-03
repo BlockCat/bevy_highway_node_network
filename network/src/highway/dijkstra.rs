@@ -1,8 +1,6 @@
-use std::collections::{BinaryHeap, HashMap, HashSet, VecDeque};
-
-use crate::{DirectedNetworkGraph, EdgeId, NetworkData, NetworkEdge, NetworkNode, NodeId};
-
 use super::ComputedState;
+use crate::{DirectedNetworkGraph, EdgeId, NetworkData, NodeId};
+use std::collections::{BinaryHeap, HashMap, VecDeque};
 
 #[derive(Debug, PartialEq, PartialOrd)]
 struct ParentEntry {
@@ -137,15 +135,6 @@ fn create_directed_acyclic_graph<D: NetworkData>(
                     },
                 });
             }
-            // } else {
-            // println!(
-            //     "Aborted node: {}: {} < {}, a(x)={}, rb(x)={}",
-            //     *state.current,
-            //     reference_distance + computed.backward.radius[*state.current],
-            //     state.distance,
-            //     reference_distance,
-            //     computed.backward.radius[*state.current]
-            // );
         }
     }
 
@@ -161,7 +150,7 @@ fn collect_next_level_edges(
     let mut collected_edges = Vec::new();
     let mut tentative_slacks = HashMap::new();
 
-    while let Some((node, (edge, distance))) = sorted_nodes.pop_front() {
+    while let Some((node, (_, distance))) = sorted_nodes.pop_front() {
         if distance <= computed.forward.radius(s0) {
             return collected_edges;
         }
@@ -295,8 +284,8 @@ mod tests {
 
     use crate::{
         highway::dijkstra::{collect_next_level_edges, create_directed_acyclic_graph},
-        tests::{create_ref_network_1, create_undirected_network, TestEdge, TestNode},
-        DirectedNetworkGraph, EdgeId, NetworkEdge, NodeId,
+        tests::{create_ref_network_1, create_undirected_network},
+        NodeId,
     };
 
     use super::ComputedState;

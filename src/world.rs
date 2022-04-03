@@ -1,11 +1,11 @@
 use crate::{
     camera::MainCamera,
-    nwb::{self, RoadEdge, RoadNode},
+    nwb::{self},
 };
 use bevy::prelude::*;
 use bevy_prototype_lyon::{prelude::*, shapes};
 use bevy_shapefile::{RoadMap, RoadSection, AABB};
-use network::{DirectedNetworkGraph, EdgeId};
+use network::{DirectedNetworkGraph};
 use std::{
     collections::{HashMap, HashSet},
     path::Path,
