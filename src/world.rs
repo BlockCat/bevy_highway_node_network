@@ -95,7 +95,7 @@ fn init_road_map(config: Res<WorldConfig>, mut commands: Commands) {
         ins.iter().max().unwrap()
     );
 
-    let next_level_edges = network::phase_1(30, &network);
+    let next_level_edges = network::phase_1(4, &network);
     println!("Collected phase1 edges: {}", next_level_edges.len());
 
     commands.insert_resource(road_map);

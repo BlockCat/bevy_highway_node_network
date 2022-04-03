@@ -1,7 +1,7 @@
 use crate::{
     BackwardNeighbourhood, DirectedNetworkGraph, ForwardNeighbourhood, NetworkEdge, NetworkNode,
 };
-use std::collections::HashSet;
+use std::{collections::HashSet, time::Instant};
 
 mod dijkstra;
 
@@ -10,13 +10,20 @@ pub fn phase_1<V: NetworkNode, E: NetworkEdge>(
     network: &DirectedNetworkGraph<V, E>,
 ) -> HashSet<crate::EdgeId> {
     println!("Start computing (forward backward)");
+    let start = Instant::now();
+
+    println!("S");
     let computed = ComputedState::new(size, network);
+    println!("E");
+    let end = Instant::now();
+    let duration = end - start;
 
     println!("Finished computing (forward backward)");
     println!(
         "Start computing (edges collections: {})",
         network.nodes.len()
     );
+    println!("Duration: {:?}ms", duration.as_millis());
 
     let edges = network
         .nodes
