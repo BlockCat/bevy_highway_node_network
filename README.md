@@ -17,7 +17,7 @@ Changed old neighbourhood using hashmap to new neighbourhood using radius:
 | N | 4 | 30| 4 | 30|
 |ms |696| 4453| 452 |3682|
 
-Generation of phase_1:
+Phase 1 generation:
 ```
-time:   [17.503 s 18.653 s 20.019 s]
+time:   [20.726 s 22.190 s 23.603 s]
 ```

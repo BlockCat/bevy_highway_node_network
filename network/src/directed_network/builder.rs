@@ -1,7 +1,10 @@
+use bincode::de;
+use serde::{Deserialize, Serialize};
+
 use crate::{DirectedNetworkGraph, NetworkData, NetworkEdge, NetworkNode, NodeId};
 use std::{collections::HashMap, fmt::Debug, hash::Hash};
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 pub enum EdgeDirection {
     Forward,
     Both,
@@ -14,6 +17,17 @@ pub trait NodeBuilder: Hash + PartialEq + Eq {
     fn data(&self) -> Self::Data;
 }
 
+#[derive(Debug, Hash, PartialEq, Eq, Clone, Copy)]
+pub struct DefaultNodeBuilder(NodeId);
+
+impl NodeBuilder for DefaultNodeBuilder {
+    type Data = ();
+
+    fn data(&self) -> Self::Data {
+        ()
+    }
+}
+
 pub trait EdgeBuilder: Clone {
     type Data: Clone;
     fn data(&self) -> Self::Data;
@@ -21,6 +35,45 @@ pub trait EdgeBuilder: Clone {
     fn target(&self) -> NodeId;
     fn weight(&self) -> f32;
     fn direction(&self) -> EdgeDirection;
+}
+
+#[derive(Debug, Clone)]
+pub struct DefaultEdgeBuilder(NodeId, NodeId, f32, EdgeDirection);
+
+impl EdgeBuilder for DefaultEdgeBuilder {
+    type Data = ();
+
+    fn data(&self) -> Self::Data {
+        ()
+    }
+
+    fn source(&self) -> NodeId {
+        self.0
+    }
+
+    fn target(&self) -> NodeId {
+        self.1
+    }
+
+    fn weight(&self) -> f32 {
+        self.2
+    }
+
+    fn direction(&self) -> EdgeDirection {
+        self.3
+    }
+}
+
+impl DefaultEdgeBuilder {
+    pub fn forward(source: NodeId, target: NodeId, weight: f32) -> DefaultEdgeBuilder {
+        Self(source, target, weight, EdgeDirection::Forward)
+    }
+    pub fn backward(source: NodeId, target: NodeId, weight: f32) -> DefaultEdgeBuilder {
+        Self(source, target, weight, EdgeDirection::Backward)
+    }
+    pub fn both(source: NodeId, target: NodeId, weight: f32) -> DefaultEdgeBuilder {
+        Self(source, target, weight, EdgeDirection::Both)
+    }
 }
 
 #[derive(Debug)]
@@ -72,30 +125,15 @@ impl<V: NodeBuilder, E: EdgeBuilder> DirectedNetworkBuilder<V, E> {
 
             network_data.add_node(node_id, node.data());
 
-            let forward_edge_index = edges.len() as u32;
-            let mut both_edge_index = None;
-            let mut backward_edge_index = None;
+            let start_edge_index = edges.len() as u32;
 
-            for (_, direction, target, data) in collect_edges(&map, node_id) {
-                if direction == EdgeDirection::Both && both_edge_index.is_none() {
-                    both_edge_index = Some(edges.len() as u32);
-                }
-                if direction == EdgeDirection::Backward && backward_edge_index.is_none() {
-                    backward_edge_index = Some(edges.len() as u32);
-                }
-                edges.push(NetworkEdge::new(target, data.weight()));
+            for (_, direction, target_node, data) in collect_edges(&map, node_id) {
+                edges.push(NetworkEdge::new(target_node, data.weight(), direction));
             }
 
             let last_edge_index = edges.len() as u32;
-            let backward_edge_index = backward_edge_index.unwrap_or(last_edge_index);
-            let both_edge_index = both_edge_index.unwrap_or(backward_edge_index);
 
-            let network_node = NetworkNode::new(
-                forward_edge_index,
-                both_edge_index,
-                backward_edge_index,
-                last_edge_index,
-            );
+            let network_node = NetworkNode::new(start_edge_index, last_edge_index);
 
             nodes.push(network_node);
         }

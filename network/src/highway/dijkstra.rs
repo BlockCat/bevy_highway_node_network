@@ -1,5 +1,5 @@
 use super::ComputedState;
-use crate::{DirectedNetworkGraph, EdgeId, NetworkData, NodeId};
+use crate::{builder::DirectedNetworkBuilder, DirectedNetworkGraph, EdgeId, NetworkData, NodeId};
 use std::collections::{BinaryHeap, HashMap, VecDeque};
 
 #[derive(Debug, PartialEq, PartialOrd)]
@@ -54,7 +54,7 @@ pub fn calculate_edges<D: NetworkData>(
     s0: NodeId,
     computed: &ComputedState,
     network: &DirectedNetworkGraph<D>,
-) -> Vec<EdgeId> {
+) -> Vec<(NodeId, EdgeId)> {
     let (sorted_order, dag) = create_directed_acyclic_graph(s0, computed, network);
     let edges = collect_next_level_edges(s0, sorted_order, dag, computed);
 
@@ -121,7 +121,7 @@ fn create_directed_acyclic_graph<D: NetworkData>(
             (reference_distance + computed.backward.radius(state.current)) < state.distance;
 
         if !should_abort {
-            for (child_edge, id) in network.out_edges(state.current) {
+            for (id, child_edge) in network.out_edges(state.current) {
                 let child = child_edge.target();
                 let next_distance = state.distance + child_edge.distance();
 
@@ -146,7 +146,7 @@ fn collect_next_level_edges(
     mut sorted_nodes: VecDeque<(NodeId, (EdgeId, f32))>,
     nodes: HashMap<NodeId, VisitedState>,
     computed: &ComputedState,
-) -> Vec<EdgeId> {
+) -> Vec<(NodeId, EdgeId)> {
     let mut collected_edges = Vec::new();
     let mut tentative_slacks = HashMap::new();
 
@@ -163,7 +163,7 @@ fn collect_next_level_edges(
             let slack_parent = slack - distance;
 
             if slack_parent < 0.0 {
-                collected_edges.push(edge_id.unwrap());
+                collected_edges.push((*parent, edge_id.unwrap()));
             }
 
             let tentative_slack_parent = tentative_slacks
@@ -228,7 +228,7 @@ fn initialize_heap<D: NetworkData>(
             parents: HashMap::from([(s0, (None, 0.0))]),
         },
     );
-    for (edge, id) in network.out_edges(s0) {
+    for (id, edge) in network.out_edges(s0) {
         heap.push(DijkstraNodeState {
             distance: edge.distance(),
             current: edge.target(),
@@ -315,8 +315,9 @@ mod tests {
         let next_edges = collect_next_level_edges(s0, edges.0, edges.1, &computed);
 
         println!("Added:");
-        for id in next_edges {
+        for (parent, id) in next_edges {
             let edge = network.edge(id);
+            assert_ne!(parent, edge.target());
             println!("ID: {:?} - {:?}", id, edge);
         }
     }
@@ -339,7 +340,7 @@ mod tests {
         next_edges.sort();
 
         println!("Added:");
-        for id in next_edges {
+        for (parent, id) in next_edges {
             let edge = network.edge(id);
             println!("ID: {:?} - {:?}", id, edge);
         }

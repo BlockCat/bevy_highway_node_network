@@ -85,30 +85,30 @@ impl TestEdge {
 // https://www.baeldung.com/wp-content/uploads/2017/01/initial-graph.png
 pub fn create_ref_network_1() -> DirectedNetworkGraph<()> {
     let nodes = vec![
-        NetworkNode::new(0, 2, 2, 2),
-        NetworkNode::new(2, 4, 4, 5),
-        NetworkNode::new(5, 6, 6, 7),
-        NetworkNode::new(7, 9, 9, 10),
-        NetworkNode::new(10, 10, 10, 13),
-        NetworkNode::new(13, 14, 14, 16),
+        NetworkNode::new(0, 2),
+        NetworkNode::new(2, 5),
+        NetworkNode::new(5, 7),
+        NetworkNode::new(7, 10),
+        NetworkNode::new(10, 13),
+        NetworkNode::new(13, 16),
     ];
     let edges = vec![
-        NetworkEdge::new(1u32.into(), 10.0), // A -> B
-        NetworkEdge::new(2u32.into(), 15.0), // A -> C
-        NetworkEdge::new(3u32.into(), 12.0), // B -> D
-        NetworkEdge::new(5u32.into(), 15.0), // B -> F
-        NetworkEdge::new(0u32.into(), 10.0), // A <- B
-        NetworkEdge::new(4u32.into(), 10.0), // C -> E
-        NetworkEdge::new(0u32.into(), 15.0), // A <- C
-        NetworkEdge::new(4u32.into(), 2.0),  // D -> E
-        NetworkEdge::new(5u32.into(), 1.0),  // D -> F
-        NetworkEdge::new(1u32.into(), 12.0), // B <- D
-        NetworkEdge::new(2u32.into(), 10.0), // C <- E
-        NetworkEdge::new(3u32.into(), 2.0),  // D <- E
-        NetworkEdge::new(5u32.into(), 5.0),  // F <- E
-        NetworkEdge::new(4u32.into(), 5.0),  // F -> E
-        NetworkEdge::new(1u32.into(), 15.0), // B <- F
-        NetworkEdge::new(3u32.into(), 1.0),  // D <- F
+        NetworkEdge::new(1u32.into(), 10.0, EdgeDirection::Forward), // A -> B
+        NetworkEdge::new(2u32.into(), 15.0, EdgeDirection::Forward), // A -> C
+        NetworkEdge::new(3u32.into(), 12.0, EdgeDirection::Forward), // B -> D
+        NetworkEdge::new(5u32.into(), 15.0, EdgeDirection::Forward), // B -> F
+        NetworkEdge::new(0u32.into(), 10.0, EdgeDirection::Backward), // A <- B
+        NetworkEdge::new(4u32.into(), 10.0, EdgeDirection::Forward), // C -> E
+        NetworkEdge::new(0u32.into(), 15.0, EdgeDirection::Backward), // A <- C
+        NetworkEdge::new(4u32.into(), 2.0, EdgeDirection::Forward),  // D -> E
+        NetworkEdge::new(5u32.into(), 1.0, EdgeDirection::Forward),  // D -> F
+        NetworkEdge::new(1u32.into(), 12.0, EdgeDirection::Backward), // B <- D
+        NetworkEdge::new(2u32.into(), 10.0, EdgeDirection::Backward), // C <- E
+        NetworkEdge::new(3u32.into(), 2.0, EdgeDirection::Backward), // D <- E
+        NetworkEdge::new(5u32.into(), 5.0, EdgeDirection::Backward), // F <- E
+        NetworkEdge::new(4u32.into(), 5.0, EdgeDirection::Forward),  // F -> E
+        NetworkEdge::new(1u32.into(), 15.0, EdgeDirection::Backward), // B <- F
+        NetworkEdge::new(3u32.into(), 1.0, EdgeDirection::Backward), // D <- F
     ];
 
     DirectedNetworkGraph::new(nodes, edges, ())

@@ -56,18 +56,18 @@ fn init_road_map(config: Res<WorldConfig>, mut commands: Commands) {
     println!("Nodes: {}", network.nodes().len());
     println!("Edges: {}", network.edges().len());
 
-    let out = network
-        .nodes()
-        .iter()
-        .map(|nn| nn.out_len())
-        .collect::<Vec<_>>();
+    // let out = network
+    //     .nodes()
+    //     .iter()
+    //     .map(|nn| nn.out_len())
+    //     .collect::<Vec<_>>();
 
-    println!(
-        "out_edges: [avg: {}, min: {}, max: {}",
-        out.iter().sum::<usize>() as f32 / out.len() as f32,
-        out.iter().min().unwrap(),
-        out.iter().max().unwrap()
-    );
+    // println!(
+    //     "out_edges: [avg: {}, min: {}, max: {}",
+    //     out.iter().sum::<usize>() as f32 / out.len() as f32,
+    //     out.iter().min().unwrap(),
+    //     out.iter().max().unwrap()
+    // );
 
     let next_level_edges = network::phase_1(30, &network);
     println!("Collected phase1 edges: {}", next_level_edges.len());

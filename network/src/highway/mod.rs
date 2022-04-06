@@ -1,7 +1,11 @@
-use crate::{BackwardNeighbourhood, DirectedNetworkGraph, ForwardNeighbourhood, NetworkData};
+use crate::{
+    BackwardNeighbourhood, DirectedNetworkGraph, EdgeId, ForwardNeighbourhood, NetworkData, NodeId,
+};
+use itertools::Itertools;
 use rayon::prelude::*;
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 
+mod core;
 mod dijkstra;
 
 macro_rules! stopwatch {
@@ -40,7 +44,7 @@ macro_rules! stopwatch {
 pub fn phase_1<D: NetworkData>(
     size: usize,
     network: &DirectedNetworkGraph<D>,
-) -> HashSet<crate::EdgeId> {
+) -> HashMap<NodeId, Vec<EdgeId>> {
     println!("Start computing (forward backward)");
 
     let (duration, computed) = stopwatch!(ComputedState::new(size, network));
@@ -58,10 +62,12 @@ pub fn phase_1<D: NetworkData>(
         .nodes()
         .par_iter()
         .enumerate()
-        .flat_map_iter(|(id, _)| dijkstra::calculate_edges(id.into(), &computed, network).into_iter())
+        .flat_map_iter(|(id, _)| {
+            dijkstra::calculate_edges(id.into(), &computed, network).into_iter()
+        })
         .collect::<HashSet<_>>();
     println!("Finished computing (edges collections)");
-    edges
+    edges.into_iter().into_group_map()
 }
 
 pub struct ComputedState {
