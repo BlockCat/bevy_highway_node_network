@@ -43,7 +43,7 @@ impl<'a> Iterator for EdgeIterator<'a> {
             .range
             .by_ref()
             .zip(self.edges.by_ref())
-            .find(|(id, edge)| {
+            .find(|(_, edge)| {
                 self.direction == edge.direction || edge.direction == EdgeDirection::Both
             })?;
 

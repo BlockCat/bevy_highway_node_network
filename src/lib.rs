@@ -15,7 +15,7 @@ pub fn write_file<T: Serialize, P: AsRef<Path>>(
 ) -> Result<(), Box<dyn std::error::Error>> {
     use std::fs::File;
 
-    println!("Started writing file: {:?}", path.as_ref());
+    println!("Started writing file: {:?}", path.as_ref());    
 
     let code = bincode::serialize(value)?;
     let result = zstd::encode_all(Cursor::new(code), 0)?;

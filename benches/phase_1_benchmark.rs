@@ -10,7 +10,7 @@ fn bench(b: &mut Criterion) {
 
     group.sample_size(10);
     group.bench_function("network::phase_1", |b| {
-        b.iter(|| network::phase_1(30, &network));
+        b.iter(|| network::calculate_layer(30, &network, 2.0));
     });
     group.finish();
 }

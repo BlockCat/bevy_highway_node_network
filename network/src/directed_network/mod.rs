@@ -8,13 +8,18 @@ use serde::{Deserialize, Serialize};
 use std::{
     cmp::Reverse,
     collections::{BinaryHeap, HashSet},
-    ops::{Deref, Range},
-    slice::Iter,
+    ops::Deref,
 };
 
 pub mod builder;
 pub mod iterators;
 pub mod node_data;
+
+#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
+pub enum ShortcutState<T> {
+    Single(T),
+    Shortcut(Vec<T>),
+}
 
 #[derive(Debug, PartialEq, Eq, Clone, Serialize, Deserialize)]
 pub struct NetworkNode {
@@ -33,7 +38,7 @@ impl NetworkNode {
 
 #[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
 pub struct NetworkEdge {
-    // id: EdgeId,
+    data_id: u32,
     target_node: NodeId,
     edge_weight: f32,
     direction: EdgeDirection,
@@ -42,9 +47,14 @@ pub struct NetworkEdge {
 impl Eq for NetworkEdge {}
 
 impl NetworkEdge {
-    pub fn new(target_node: NodeId, edge_weight: f32, direction: EdgeDirection) -> Self {
+    pub fn new(
+        data_id: u32,
+        target_node: NodeId,
+        edge_weight: f32,
+        direction: EdgeDirection,
+    ) -> Self {
         Self {
-            // id,
+            data_id,
             target_node,
             edge_weight,
             direction,
@@ -110,7 +120,7 @@ impl Deref for EdgeId {
 
 #[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct DirectedNetworkGraph<D: NetworkData = ()> {
-    data: D,
+    pub data: D,
     nodes: Vec<NetworkNode>,
     edges: Vec<NetworkEdge>,
 }
@@ -145,7 +155,7 @@ impl<D: NetworkData> DirectedNetworkGraph<D> {
             self.edges[node.start_edge_index as usize..node.last_edge_index as usize].iter();
 
         EdgeIterator::new(
-            (node.start_edge_index..node.last_edge_index),
+            node.start_edge_index..node.last_edge_index,
             edges,
             direction,
         )

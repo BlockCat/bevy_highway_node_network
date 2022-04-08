@@ -1,5 +1,5 @@
 use super::ComputedState;
-use crate::{builder::DirectedNetworkBuilder, DirectedNetworkGraph, EdgeId, NetworkData, NodeId};
+use crate::{DirectedNetworkGraph, EdgeId, NetworkData, NodeId};
 use std::collections::{BinaryHeap, HashMap, VecDeque};
 
 #[derive(Debug, PartialEq, PartialOrd)]
@@ -340,7 +340,7 @@ mod tests {
         next_edges.sort();
 
         println!("Added:");
-        for (parent, id) in next_edges {
+        for (_, id) in next_edges {
             let edge = network.edge(id);
             println!("ID: {:?} - {:?}", id, edge);
         }

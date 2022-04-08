@@ -1,7 +1,5 @@
-use bincode::de;
-use serde::{Deserialize, Serialize};
-
 use crate::{DirectedNetworkGraph, NetworkData, NetworkEdge, NetworkNode, NodeId};
+use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, fmt::Debug, hash::Hash};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
@@ -18,7 +16,7 @@ pub trait NodeBuilder: Hash + PartialEq + Eq {
 }
 
 #[derive(Debug, Hash, PartialEq, Eq, Clone, Copy)]
-pub struct DefaultNodeBuilder(NodeId);
+pub struct DefaultNodeBuilder(pub NodeId);
 
 impl NodeBuilder for DefaultNodeBuilder {
     type Data = ();
@@ -128,7 +126,12 @@ impl<V: NodeBuilder, E: EdgeBuilder> DirectedNetworkBuilder<V, E> {
             let start_edge_index = edges.len() as u32;
 
             for (_, direction, target_node, data) in collect_edges(&map, node_id) {
-                edges.push(NetworkEdge::new(target_node, data.weight(), direction));
+                edges.push(NetworkEdge::new(
+                    edges.len() as u32,
+                    target_node,
+                    data.weight(),
+                    direction,
+                ));
             }
 
             let last_edge_index = edges.len() as u32;
