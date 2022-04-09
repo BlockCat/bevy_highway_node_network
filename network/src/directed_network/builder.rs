@@ -129,7 +129,7 @@ impl<V: NodeBuilder, E: EdgeBuilder> DirectedNetworkBuilder<V, E> {
                 let network_edge =
                     NetworkEdge::new(edges.len() as u32, target_node, data.weight(), direction);
 
-                network_data.add_edge(network_edge.data_id.into(), data.data());
+                network_data.add_edge(network_edge.edge_id.into(), data.data());
                 edges.push(network_edge);
             }
 
@@ -168,7 +168,7 @@ fn collect_edges<E: EdgeBuilder + Sized>(
                 }
             };
 
-            debug_assert!(source == node_id);
+            assert!(source == node_id);
 
             let data = (*x).clone();
 

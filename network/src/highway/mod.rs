@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 use self::intermediate_network::{IntermediateData, IntermediateNetwork};
 use crate::{
     highway::intermediate_network::IntermediateEdge, BackwardNeighbourhood, DirectedNetworkGraph,
@@ -74,21 +76,22 @@ pub(crate) fn phase_1<D: NetworkData>(
         .nodes()
         .par_iter()
         .enumerate()
-        .flat_map_iter(|(id, _)| {
-            dijkstra::calculate_edges(id.into(), &computed, network)
-                .into_iter()
-                .map(|(source, edge_id)| {
-                    let edge = network.edge(edge_id);
-                    IntermediateEdge::new(
-                        source,
-                        edge.target(),
-                        edge.distance(),
-                        ShortcutState::Single(edge.data_id),
-                        crate::builder::EdgeDirection::Forward,
-                    )
-                })
+        .flat_map_iter(|(id, _)| dijkstra::calculate_edges(id.into(), &computed, network))
+        .collect::<HashSet<_>>();
+
+    let edges = edges
+        .into_iter()
+        .map(|(source, edge_id)| {
+            let edge = network.edge(edge_id);
+            IntermediateEdge::new(
+                source,
+                edge.target(),
+                edge.distance(),
+                ShortcutState::Single(edge.edge_id),
+                crate::builder::EdgeDirection::Forward,
+            )
         })
-        .collect::<IntermediateNetwork>();
+        .collect();
     println!("Finished computing (edges collections)");
 
     edges

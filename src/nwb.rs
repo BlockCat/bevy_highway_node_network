@@ -1,3 +1,4 @@
+use bevy::math::Vec2;
 use bevy_shapefile::RoadMap;
 use network::{
     builder::{DirectedNetworkBuilder, EdgeBuilder, EdgeDirection, NodeBuilder},
@@ -8,16 +9,16 @@ use rusqlite::{
     Connection,
 };
 use serde::{Deserialize, Serialize};
-use std::{path::Path, collections::HashMap};
+use std::{collections::HashMap, hash::Hash, path::Path};
 
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
 pub struct NWBNetworkData {
-    node_junctions: Vec<usize>,
+    pub node_junctions: Vec<(usize, Vec2)>,
     edge_id: Vec<usize>, // for sql
 }
 
 impl NetworkData for NWBNetworkData {
-    type NodeData = usize;
+    type NodeData = (usize, Vec2);
     type EdgeData = usize;
 
     fn node_data(&self, node: NodeId) -> &Self::NodeData {
@@ -30,7 +31,7 @@ impl NetworkData for NWBNetworkData {
 
     fn with_size(node_size: usize, edge_size: usize) -> Self {
         NWBNetworkData {
-            node_junctions: vec![0; node_size],
+            node_junctions: vec![(0, Vec2::ZERO); node_size],
             edge_id: vec![0; edge_size],
         }
     }
@@ -44,16 +45,31 @@ impl NetworkData for NWBNetworkData {
     }
 }
 
-#[derive(Debug, Hash, PartialEq, Eq)]
+#[derive(Debug)]
 pub struct RoadNode {
     pub junction_id: usize,
+    pub location: Vec2,
+}
+
+impl PartialEq for RoadNode {
+    fn eq(&self, other: &Self) -> bool {
+        self.junction_id == other.junction_id
+    }
+}
+
+impl Eq for RoadNode {}
+
+impl Hash for RoadNode {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        self.junction_id.hash(state);
+    }
 }
 
 impl NodeBuilder for RoadNode {
-    type Data = usize;
+    type Data = (usize, Vec2);
 
     fn data(&self) -> Self::Data {
-        self.junction_id
+        (self.junction_id, self.location.clone())
     }
 }
 
@@ -120,9 +136,7 @@ pub fn preprocess_roadmap<P: AsRef<Path>>(
     let roads = &roadmap.roads;
 
     let statement = database
-        .prepare(
-            "SELECT id,junction_id_begin, junction_id_end, rij_richting FROM wegvakken",
-        )
+        .prepare("SELECT id,junction_id_begin, junction_id_end, rij_richting FROM wegvakken")
         .expect("Could not prepare statement")
         .query_map([], |f| {
             let id: usize = f.get(0)?;
@@ -130,19 +144,22 @@ pub fn preprocess_roadmap<P: AsRef<Path>>(
             let junction_end: usize = f.get(2)?;
             let rij_richting: RijRichting = f.get(3)?;
             Ok((id, (junction_start, junction_end, rij_richting)))
-        }).expect("Could not")
+        })
+        .expect("Could not")
         .map(|x| x.unwrap())
         .collect::<HashMap<usize, (usize, usize, RijRichting)>>();
-        
 
+ 
     for (&id, section) in roads {
         let (road_id_start, road_id_end, rij_richting) = statement[&id];
 
         let source = builder.add_node(RoadNode {
             junction_id: road_id_start,
+            location: section.points.first().unwrap().clone(),
         });
         let target = builder.add_node(RoadNode {
             junction_id: road_id_end,
+            location: section.points.last().unwrap().clone(),
         });
 
         let distance = section.points.windows(2).map(|w| w[0].distance(w[1])).sum();

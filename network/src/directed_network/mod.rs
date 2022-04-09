@@ -38,7 +38,7 @@ impl NetworkNode {
 
 #[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
 pub struct NetworkEdge {
-    pub data_id: u32,
+    pub edge_id: u32,
     target_node: NodeId,
     edge_weight: f32,
     direction: EdgeDirection,
@@ -54,7 +54,7 @@ impl NetworkEdge {
         direction: EdgeDirection,
     ) -> Self {
         Self {
-            data_id,
+            edge_id: data_id,
             target_node,
             edge_weight,
             direction,

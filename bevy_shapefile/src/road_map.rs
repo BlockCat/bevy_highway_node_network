@@ -4,13 +4,13 @@ use bevy::{
     render::primitives::Aabb,
 };
 use rayon::prelude::*;
-use rstar::{RStarInsertionStrategy, RTree, RTreeObject, RTreeParams};
+use rstar::{PointDistance, RStarInsertionStrategy, RTree, RTreeObject, RTreeParams};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use shapefile::Polyline;
 use std::{collections::HashMap, fs::File, path::Path};
 
 #[derive(Serialize, Deserialize, Debug)]
-pub struct RoadMap {
+pub struct RoadMap {    
     pub roads: HashMap<usize, RoadSection>,
     pub map: rstar::RTree<RoadSpatialIndex, Params>,
 }

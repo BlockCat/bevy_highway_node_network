@@ -138,7 +138,7 @@ impl PreProcess {
     ) -> Self {
         let mut road_data_level = HashMap::new();
         for id in 0..base.edges().len() {
-            let edge = base.edge(id.into()).data_id;
+            let edge = base.edge(id.into()).edge_id;
             road_data_level.insert(edge, 0u8);
         }
 

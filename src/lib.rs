@@ -1,3 +1,4 @@
+#![feature(map_try_insert)]
 use serde::{de::DeserializeOwned, Serialize};
 use std::{
     io::{Cursor, Write},
@@ -7,8 +8,8 @@ use std::{
 pub mod camera;
 pub mod geo_coords;
 pub mod nwb;
-pub mod world;
 pub mod ui;
+pub mod world;
 
 pub fn write_file<T: Serialize, P: AsRef<Path>>(
     value: &T,
@@ -16,7 +17,7 @@ pub fn write_file<T: Serialize, P: AsRef<Path>>(
 ) -> Result<(), Box<dyn std::error::Error>> {
     use std::fs::File;
 
-    println!("Started writing file: {:?}", path.as_ref());    
+    println!("Started writing file: {:?}", path.as_ref());
 
     let code = bincode::serialize(value)?;
     let result = zstd::encode_all(Cursor::new(code), 0)?;
