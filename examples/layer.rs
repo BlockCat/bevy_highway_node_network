@@ -26,6 +26,7 @@ fn main() {
             prev_layer.edges().len()
         );
         let next = network::calculate_layer(30, prev_layer, 3.0);
+
         write_file(&next, format!("data/{}.graph", i)).expect("Could not write");
         layers.push(next);
     }

@@ -8,6 +8,7 @@ pub mod camera;
 pub mod geo_coords;
 pub mod nwb;
 pub mod world;
+pub mod ui;
 
 pub fn write_file<T: Serialize, P: AsRef<Path>>(
     value: &T,

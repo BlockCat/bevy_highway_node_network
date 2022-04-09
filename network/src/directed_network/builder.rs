@@ -126,12 +126,11 @@ impl<V: NodeBuilder, E: EdgeBuilder> DirectedNetworkBuilder<V, E> {
             let start_edge_index = edges.len() as u32;
 
             for (_, direction, target_node, data) in collect_edges(&map, node_id) {
-                edges.push(NetworkEdge::new(
-                    edges.len() as u32,
-                    target_node,
-                    data.weight(),
-                    direction,
-                ));
+                let network_edge =
+                    NetworkEdge::new(edges.len() as u32, target_node, data.weight(), direction);
+
+                network_data.add_edge(network_edge.data_id.into(), data.data());
+                edges.push(network_edge);
             }
 
             let last_edge_index = edges.len() as u32;

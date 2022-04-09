@@ -38,7 +38,7 @@ impl NetworkNode {
 
 #[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
 pub struct NetworkEdge {
-    data_id: u32,
+    pub data_id: u32,
     target_node: NodeId,
     edge_weight: f32,
     direction: EdgeDirection,
@@ -118,7 +118,7 @@ impl Deref for EdgeId {
     }
 }
 
-#[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct DirectedNetworkGraph<D: NetworkData = ()> {
     pub data: D,
     nodes: Vec<NetworkNode>,
@@ -132,6 +132,14 @@ impl<D: NetworkData> DirectedNetworkGraph<D> {
 
     pub fn node(&self, node: NodeId) -> &NetworkNode {
         &self.nodes[node.0 as usize]
+    }
+
+    pub fn edge_data(&self, edge: EdgeId) -> &D::EdgeData {
+        self.data.edge_data(edge)
+    }
+
+    pub fn node_data(&self, node: NodeId) -> &D::NodeData {
+        self.data.node_data(node)
     }
 
     pub fn nodes(&self) -> &Vec<NetworkNode> {
@@ -207,6 +215,7 @@ impl<D: NetworkData> DirectedNetworkGraph<D> {
         BackwardNeighbourhood::from_network(size, self)
     }
 }
+
 
 #[cfg(test)]
 mod tests {

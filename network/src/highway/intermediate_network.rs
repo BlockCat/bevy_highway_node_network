@@ -9,6 +9,15 @@ use std::collections::HashMap;
 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct IntermediateNode(pub NodeId);
 
+#[derive(Debug, Clone)]
+pub struct IntermediateEdge {
+    data: ShortcutState<u32>,
+    direction: EdgeDirection,
+    source: NodeId,
+    target: NodeId,
+    weight: f32,
+}
+
 impl NodeBuilder for IntermediateNode {
     type Data = NodeId;
 
@@ -17,17 +26,8 @@ impl NodeBuilder for IntermediateNode {
     }
 }
 
-#[derive(Debug, Clone)]
-pub struct IntermediateEdge {
-    data: ShortcutState<EdgeId>,
-    direction: EdgeDirection,
-    source: NodeId,
-    target: NodeId,
-    weight: f32,
-}
-
 impl EdgeBuilder for IntermediateEdge {
-    type Data = ShortcutState<EdgeId>;
+    type Data = ShortcutState<u32>;
 
     fn data(&self) -> Self::Data {
         self.data.clone()
@@ -55,7 +55,7 @@ impl IntermediateEdge {
         source: NodeId,
         target: NodeId,
         weight: f32,
-        data: ShortcutState<EdgeId>,
+        data: ShortcutState<u32>,
         direction: EdgeDirection,
     ) -> Self {
         Self {
@@ -144,7 +144,7 @@ impl IntermediateNetwork {
                 debug_assert_eq!(child, &child_edge.target);
                 if parent.0 != child.0 {
                     let distance = parent_edge.weight + child_edge.weight;
-                    let state = collect_shortcut_edges(parent_edge, child_edge);
+                    let state = collect_shortcut_data_edges(parent_edge, child_edge);
                     let shortcut = IntermediateEdge::new(
                         *parent,
                         *child,
@@ -170,10 +170,10 @@ impl IntermediateNetwork {
     }
 }
 
-fn collect_shortcut_edges(
+fn collect_shortcut_data_edges(
     parent_edge: &IntermediateEdge,
     child_edge: &IntermediateEdge,
-) -> Vec<EdgeId> {
+) -> Vec<u32> {
     match (&parent_edge.data, &child_edge.data) {
         (ShortcutState::Single(a), ShortcutState::Single(b)) => vec![*a, *b],
         (ShortcutState::Single(a), ShortcutState::Shortcut(b)) => {
@@ -224,12 +224,12 @@ impl FromParallelIterator<IntermediateEdge> for IntermediateNetwork {
 #[derive(Debug, Default, Clone, Serialize, Deserialize)]
 pub struct IntermediateData {
     references: HashMap<NodeId, NodeId>,
-    shortcuts: HashMap<EdgeId, ShortcutState<EdgeId>>,
+    shortcuts: HashMap<EdgeId, ShortcutState<u32>>,
 }
 
 impl NetworkData for IntermediateData {
     type NodeData = NodeId;
-    type EdgeData = ShortcutState<EdgeId>;
+    type EdgeData = ShortcutState<u32>;
 
     fn node_data(&self, node: NodeId) -> &Self::NodeData {
         &self.references[&node]

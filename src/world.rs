@@ -1,11 +1,12 @@
 use crate::{
     camera::MainCamera,
     nwb::{self},
+    ui::PreProcess,
 };
-use bevy::prelude::*;
+use bevy::{prelude::*, tasks::ComputeTaskPool};
 use bevy_prototype_lyon::{prelude::*, shapes};
 use bevy_shapefile::{RoadMap, RoadSection, AABB};
-use network::{DirectedNetworkGraph};
+use network::{DirectedNetworkGraph, EdgeId};
 use std::{
     collections::{HashMap, HashSet},
     path::Path,
@@ -26,8 +27,9 @@ pub struct WorldConfig {
     pub normal_colour: Color,
 }
 
-#[derive(Debug, Clone, Default, Component)]
+#[derive(Debug, Clone, Component)]
 pub struct WorldEntity {
+    pub id: EdgeId,
     pub selected: bool,
 }
 
@@ -41,6 +43,8 @@ impl Plugin for WorldPlugin {
         app.insert_resource(WorldTracker::default())
             .insert_resource(self.config.clone())
             .add_startup_system(init_road_map)
+            .add_system(mark_on_changed_preprocess)
+            .add_system(colour_system)
             .add_system(visible_entities);
     }
 }
@@ -69,7 +73,7 @@ fn init_road_map(config: Res<WorldConfig>, mut commands: Commands) {
     //     out.iter().max().unwrap()
     // );
 
-    let next_level_edges = network::calculate_layer(30, &network, 2.0);
+    // let next_level_edges = network::calculate_layer(30, &network, 2.0);
     // println!("Collected phase1 edges: {}", next_level_edges.len());
 
     commands.insert_resource(road_map);
@@ -84,8 +88,8 @@ fn load_road_map(config: &Res<WorldConfig>) -> RoadMap {
         road_map
     } else {
         println!("File {:?} not found, creating...", road_map_path);
-        let road_map =
-            bevy_shapefile::from_shapefile(&config.shapefile_path).expect("Could not read shapefile");
+        let road_map = bevy_shapefile::from_shapefile(&config.shapefile_path)
+            .expect("Could not read shapefile");
 
         crate::write_file(&road_map, road_map_path).expect("Could not write road_map");
 
@@ -108,6 +112,20 @@ fn load_graph(
         network
     };
     network
+}
+
+fn mark_on_changed_preprocess(
+    mut tracker: ResMut<WorldTracker>,
+    preprocess: Option<Res<PreProcess>>,
+    mut q_camera: Query<(&Camera, &GlobalTransform, &mut Transform), (With<MainCamera>,)>,
+) {
+    if let Some(preprocess) = preprocess {
+        if preprocess.is_added() {
+            if let Ok(_) = q_camera.get_single_mut() {
+                tracker.map.clear();
+            }
+        }
+    }
 }
 
 fn visible_entities(
@@ -156,10 +174,24 @@ fn visible_entities(
         for id in added {
             let section = road_map.roads.get(id).unwrap();
             let colour = config.normal_colour;
-            let entity = spawn_figure(&mut commands, section, colour);
+            let entity = spawn_figure(&mut commands, EdgeId::from(*id), section, colour);
             tracker.map.insert(*id, entity);
         }
     }
+}
+
+fn colour_system(
+    pool: Res<ComputeTaskPool>,
+    config: Res<WorldConfig>,
+    mut query: Query<(&WorldEntity, &mut DrawMode)>,
+) {
+    query.par_for_each_mut(&pool, 32, |(we, mut mode)| {
+        if we.selected {
+            *mode = DrawMode::Stroke(StrokeMode::new(config.selected_colour, 4.0));
+        } else {
+            *mode = DrawMode::Stroke(StrokeMode::new(config.normal_colour, 2.0));
+        }
+    });
 }
 
 fn convert(pos: Vec2, transform: &GlobalTransform, camera: &Camera) -> Vec2 {
@@ -168,7 +200,12 @@ fn convert(pos: Vec2, transform: &GlobalTransform, camera: &Camera) -> Vec2 {
         .truncate()
 }
 
-fn spawn_figure(commands: &mut Commands, section: &RoadSection, color: Color) -> Entity {
+fn spawn_figure(
+    commands: &mut Commands,
+    id: EdgeId,
+    section: &RoadSection,
+    color: Color,
+) -> Entity {
     let shape = shapes::Polygon {
         closed: false,
         points: section.points.clone(),
@@ -179,6 +216,9 @@ fn spawn_figure(commands: &mut Commands, section: &RoadSection, color: Color) ->
             DrawMode::Stroke(StrokeMode::new(color, 2.0)),
             Transform::default(),
         ))
-        .insert(WorldEntity::default())
+        .insert(WorldEntity {
+            id,
+            selected: false,
+        })
         .id()
 }

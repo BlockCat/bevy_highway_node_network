@@ -1,13 +1,13 @@
 use self::intermediate_network::{IntermediateData, IntermediateNetwork};
 use crate::{
     highway::intermediate_network::IntermediateEdge, BackwardNeighbourhood, DirectedNetworkGraph,
-    ForwardNeighbourhood, NetworkData, ShortcutState, builder::EdgeBuilder,
+    ForwardNeighbourhood, NetworkData, ShortcutState,
 };
 use rayon::prelude::*;
 
-mod core;
-mod dijkstra;
-mod intermediate_network;
+pub mod core;
+pub mod dijkstra;
+pub mod intermediate_network;
 
 macro_rules! stopwatch {
     ($x:expr) => {{
@@ -49,7 +49,7 @@ pub fn calculate_layer<D: NetworkData>(
 ) -> DirectedNetworkGraph<IntermediateData> {
     let intermediate = phase_1(size, network);
 
-    let intermediate = phase_2(intermediate, contraction_factor);
+    // let intermediate = phase_2(intermediate, contraction_factor);
 
     DirectedNetworkGraph::from(intermediate)
 }
@@ -79,12 +79,11 @@ pub(crate) fn phase_1<D: NetworkData>(
                 .into_iter()
                 .map(|(source, edge_id)| {
                     let edge = network.edge(edge_id);
-                    
                     IntermediateEdge::new(
                         source,
                         edge.target(),
                         edge.distance(),
-                        ShortcutState::Single(edge_id),
+                        ShortcutState::Single(edge.data_id),
                         crate::builder::EdgeDirection::Forward,
                     )
                 })

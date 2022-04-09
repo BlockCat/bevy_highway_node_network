@@ -6,6 +6,7 @@ extern crate test;
 use bevy::{prelude::*, DefaultPlugins};
 use bevy_dutch_road_highway_node_network::{
     camera::{CameraConfig, CameraPlugin},
+    ui::HighwayUiPlugin,
     world::{WorldConfig, WorldPlugin},
 };
 use bevy_prototype_lyon::plugin::ShapePlugin;
@@ -15,6 +16,7 @@ fn main() {
         .insert_resource(ClearColor(Color::rgb(0.0, 0.0, 0.2)))
         .insert_resource(Msaa { samples: 4 })
         .add_plugins(DefaultPlugins)
+        .add_plugin(HighwayUiPlugin)
         .add_plugin(ShapePlugin)
         .add_plugin(WorldPlugin {
             config: WorldConfig {

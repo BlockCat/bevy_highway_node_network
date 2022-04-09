@@ -10,7 +10,7 @@ use rusqlite::{
 use serde::{Deserialize, Serialize};
 use std::{path::Path, collections::HashMap};
 
-#[derive(Debug, Default, Serialize, Deserialize)]
+#[derive(Clone, Debug, Default, Serialize, Deserialize)]
 pub struct NWBNetworkData {
     node_junctions: Vec<usize>,
     edge_id: Vec<usize>, // for sql
