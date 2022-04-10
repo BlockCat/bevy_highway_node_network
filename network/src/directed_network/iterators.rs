@@ -1,7 +1,11 @@
-use crate::{DirectedNetworkGraph, NetworkData, NodeId};
+use crate::{
+    builder::EdgeDirection, DirectedNetworkGraph, EdgeId, NetworkData, NetworkEdge, NodeId,
+};
 use std::{
     cmp::Reverse,
     collections::{BinaryHeap, HashSet},
+    ops::Range,
+    slice::Iter,
 };
 
 #[derive(Debug, Default, Clone, Copy, PartialEq, PartialOrd)]
@@ -14,6 +18,38 @@ impl Ord for F32 {
 }
 
 impl Eq for F32 {}
+
+pub struct EdgeIterator<'a> {
+    range: Range<u32>,
+    edges: Iter<'a, NetworkEdge>,
+    direction: EdgeDirection,
+}
+
+impl<'a> EdgeIterator<'a> {
+    pub fn new(range: Range<u32>, edges: Iter<'a, NetworkEdge>, direction: EdgeDirection) -> Self {
+        Self {
+            range,
+            edges,
+            direction,
+        }
+    }
+}
+
+impl<'a> Iterator for EdgeIterator<'a> {
+    type Item = (EdgeId, &'a NetworkEdge);
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let (id, edge) = self
+            .range
+            .by_ref()
+            .zip(self.edges.by_ref())
+            .find(|(_, edge)| {
+                self.direction == edge.direction || edge.direction == EdgeDirection::Both
+            })?;
+
+        Some((id.into(), edge))
+    }
+}
 
 pub struct ForwardDijkstraIterator<'a, D: NetworkData> {
     pub network: &'a DirectedNetworkGraph<D>,
@@ -37,7 +73,7 @@ impl<'a, D: NetworkData> Iterator for ForwardDijkstraIterator<'a, D> {
             if !self.visited.insert(node) {
                 continue;
             }
-            for (edge, _) in self.network.out_edges(node) {
+            for (_, edge) in self.network.out_edges(node) {
                 let target = edge.target();
                 let edge_distance = edge.distance();
 
@@ -61,7 +97,7 @@ impl<'a, D: NetworkData> Iterator for BackwardDijkstraIterator<'a, D> {
             if !self.visited.insert(node) {
                 continue;
             }
-            for edge in self.network.in_edges(node) {
+            for (_, edge) in self.network.in_edges(node) {
                 let source = edge.target();
                 let edge_distance = edge.distance();
 

@@ -1,13 +1,16 @@
 use crate::{
     camera::MainCamera,
-    nwb::{self},
+    geo_coords::{RijkDriehoekCoordinate, WGS84},
+    nwb::{self, NWBNetworkData},
+    ui::PreProcess,
 };
-use bevy::prelude::*;
+use bevy::{prelude::*, tasks::ComputeTaskPool};
 use bevy_prototype_lyon::{prelude::*, shapes};
 use bevy_shapefile::{RoadMap, RoadSection, AABB};
-use network::{DirectedNetworkGraph};
+use network::{iterators::F32, DirectedNetworkGraph, EdgeId, NetworkData, NodeId};
 use std::{
-    collections::{HashMap, HashSet},
+    cmp::Reverse,
+    collections::{BinaryHeap, HashMap, HashSet},
     path::Path,
 };
 
@@ -26,8 +29,9 @@ pub struct WorldConfig {
     pub normal_colour: Color,
 }
 
-#[derive(Debug, Clone, Default, Component)]
+#[derive(Debug, Clone, Component)]
 pub struct WorldEntity {
+    pub id: EdgeId,
     pub selected: bool,
 }
 
@@ -40,7 +44,15 @@ impl Plugin for WorldPlugin {
     fn build(&self, app: &mut bevy::prelude::App) {
         app.insert_resource(WorldTracker::default())
             .insert_resource(self.config.clone())
+            .insert_resource(RouteLoaded {
+                loaded: false,
+                edges: Vec::new(),
+            })
             .add_startup_system(init_road_map)
+            .add_system(mark_on_changed_preprocess)
+            .add_system(colour_system)
+            // .add_system(test_algorithm)
+            // .add_system(help)
             .add_system(visible_entities);
     }
 }
@@ -56,21 +68,21 @@ fn init_road_map(config: Res<WorldConfig>, mut commands: Commands) {
     println!("Nodes: {}", network.nodes().len());
     println!("Edges: {}", network.edges().len());
 
-    let out = network
-        .nodes()
-        .iter()
-        .map(|nn| nn.out_len())
-        .collect::<Vec<_>>();
+    // let out = network
+    //     .nodes()
+    //     .iter()
+    //     .map(|nn| nn.out_len())
+    //     .collect::<Vec<_>>();
 
-    println!(
-        "out_edges: [avg: {}, min: {}, max: {}",
-        out.iter().sum::<usize>() as f32 / out.len() as f32,
-        out.iter().min().unwrap(),
-        out.iter().max().unwrap()
-    );
+    // println!(
+    //     "out_edges: [avg: {}, min: {}, max: {}",
+    //     out.iter().sum::<usize>() as f32 / out.len() as f32,
+    //     out.iter().min().unwrap(),
+    //     out.iter().max().unwrap()
+    // );
 
-    let next_level_edges = network::phase_1(30, &network);
-    println!("Collected phase1 edges: {}", next_level_edges.len());
+    // let next_level_edges = network::calculate_layer(30, &network, 2.0);
+    // println!("Collected phase1 edges: {}", next_level_edges.len());
 
     commands.insert_resource(road_map);
     commands.insert_resource(network);
@@ -84,8 +96,8 @@ fn load_road_map(config: &Res<WorldConfig>) -> RoadMap {
         road_map
     } else {
         println!("File {:?} not found, creating...", road_map_path);
-        let road_map =
-            bevy_shapefile::from_shapefile(&config.shapefile_path).expect("Could not read shapefile");
+        let road_map = bevy_shapefile::from_shapefile(&config.shapefile_path)
+            .expect("Could not read shapefile");
 
         crate::write_file(&road_map, road_map_path).expect("Could not write road_map");
 
@@ -108,6 +120,40 @@ fn load_graph(
         network
     };
     network
+}
+
+fn mark_on_changed_preprocess(
+    mut tracker: ResMut<WorldTracker>,
+    preprocess: Option<Res<PreProcess>>,
+    mut q_camera: Query<(&Camera, &GlobalTransform, &mut Transform), (With<MainCamera>,)>,
+) {
+    if let Some(preprocess) = preprocess {
+        if preprocess.is_added() {
+            if let Ok(_) = q_camera.get_single_mut() {
+                tracker.map.clear();
+            }
+        }
+    }
+}
+
+fn help(
+    loaded: Res<RouteLoaded>,
+    mut query: Query<&mut WorldEntity>,
+    network: Res<DirectedNetworkGraph<NWBNetworkData>>,
+) {
+    let l = loaded
+        .edges
+        .iter()
+        .map(|(_, e)| EdgeId::from(*network.edge_data(*e)))
+        .collect::<HashSet<_>>();
+
+    query.for_each_mut(|mut a| {
+        if l.contains(&a.id) {
+            a.selected = true;
+        } else {
+            a.selected = false;
+        }
+    });
 }
 
 fn visible_entities(
@@ -156,10 +202,24 @@ fn visible_entities(
         for id in added {
             let section = road_map.roads.get(id).unwrap();
             let colour = config.normal_colour;
-            let entity = spawn_figure(&mut commands, section, colour);
+            let entity = spawn_figure(&mut commands, EdgeId::from(*id), section, colour);
             tracker.map.insert(*id, entity);
         }
     }
+}
+
+fn colour_system(
+    pool: Res<ComputeTaskPool>,
+    config: Res<WorldConfig>,
+    mut query: Query<(&WorldEntity, &mut DrawMode)>,
+) {
+    query.par_for_each_mut(&pool, 32, |(we, mut mode)| {
+        if we.selected {
+            *mode = DrawMode::Stroke(StrokeMode::new(config.selected_colour, 4.0));
+        } else {
+            *mode = DrawMode::Stroke(StrokeMode::new(config.normal_colour, 2.0));
+        }
+    });
 }
 
 fn convert(pos: Vec2, transform: &GlobalTransform, camera: &Camera) -> Vec2 {
@@ -168,7 +228,12 @@ fn convert(pos: Vec2, transform: &GlobalTransform, camera: &Camera) -> Vec2 {
         .truncate()
 }
 
-fn spawn_figure(commands: &mut Commands, section: &RoadSection, color: Color) -> Entity {
+fn spawn_figure(
+    commands: &mut Commands,
+    id: EdgeId,
+    section: &RoadSection,
+    color: Color,
+) -> Entity {
     let shape = shapes::Polygon {
         closed: false,
         points: section.points.clone(),
@@ -179,6 +244,161 @@ fn spawn_figure(commands: &mut Commands, section: &RoadSection, color: Color) ->
             DrawMode::Stroke(StrokeMode::new(color, 2.0)),
             Transform::default(),
         ))
-        .insert(WorldEntity::default())
+        .insert(WorldEntity {
+            id,
+            selected: false,
+        })
         .id()
+}
+
+struct RouteLoaded {
+    loaded: bool,
+    edges: Vec<(NodeId, EdgeId)>,
+}
+
+fn test_algorithm(
+    mut state: ResMut<RouteLoaded>,
+    mut tracker: ResMut<WorldTracker>,
+    network: Res<DirectedNetworkGraph<NWBNetworkData>>,
+) {
+    if !state.loaded {
+        println!("Start finding path!?");
+        state.loaded = true;
+        let pos_a = Vec2::from(RijkDriehoekCoordinate::from(WGS84 {
+            latitude: 52.093_597,
+            longitude: 5.1134345,
+        }));
+
+        let pos_b = Vec2::from(RijkDriehoekCoordinate::from(WGS84 {
+            latitude: 52.0600892,
+            longitude: 4.4874663,
+        }));
+
+        let node_a = network
+            .data
+            .node_junctions
+            .iter()
+            .enumerate()
+            .min_by_key(|(_, (_, d))| F32(d.distance_squared(pos_a)))
+            .map(|x| NodeId::from(x.0))
+            .unwrap();
+
+        let node_b = network
+            .data
+            .node_junctions
+            .iter()
+            .enumerate()
+            .min_by_key(|(_, (_, d))| F32(d.distance_squared(pos_b)))
+            .map(|x| NodeId::from(x.0))
+            .unwrap();
+
+        let distance = {
+            let a = network.node_data(node_a).1;
+            let b = network.node_data(node_b).1;
+
+            println!("{:?} ----- {:?}", a, b);
+            a.distance(b)
+        };
+
+        println!("Found node: {:?} -> {:?} [{}]", node_a, node_b, distance);
+
+        if let Ok(some) = find_route(node_a.into(), node_b.into(), &network, |a, b| {
+            let a = network.node_data(a).1;
+            let b = network.node_data(b).1;
+            a.distance(b)
+            // 0.0
+        }) {
+            // println!("Could find path: {:?}", some);
+
+            state.edges = some;
+
+            tracker.map.clear();
+        } else {
+            println!("Could not find path");
+        }
+    }
+}
+
+fn find_route<D, F>(
+    source: NodeId,
+    target: NodeId,
+    network: &DirectedNetworkGraph<D>,
+    spare: F,
+) -> Result<Vec<(NodeId, EdgeId)>, String>
+where
+    D: NetworkData,
+    F: Fn(NodeId, NodeId) -> f32,
+{
+    let stop_distance = spare(source, target) * 2.0;
+    let mut map = HashMap::new();
+    let mut evaluated = 0usize;
+    // let mut test = Vec::new();
+
+    let mut heap = BinaryHeap::new();
+    for (id, initial_descendant) in network.out_edges(source) {
+        println!("init: {:?}, {:?}", id, initial_descendant);
+        let target = initial_descendant.target();
+        let distance = initial_descendant.distance();
+
+        heap.push((
+            Reverse(F32(distance + spare(source, target))),
+            F32(distance),
+            target,
+            (source, id),
+        ));
+    }
+
+    while let Some((Reverse(F32(x)), F32(old_distance), current, parent)) = heap.pop() {
+        let spare_distance = spare(current, target);
+        evaluated += 1;
+
+        if map.contains_key(&current) {
+            continue;
+        }
+        map.insert(current, parent);
+
+        // test.push(parent);
+        // println!("GRR: {} > {} of {}", x, old_distance, spare_distance);
+        if current == target {
+            println!("Evaluated: {}", evaluated);
+            let mut path = Vec::new();
+            let mut node = current;
+
+            while let Some((parent, edge)) = map.remove(&node) {
+                path.push((node, edge));
+                node = parent;
+            }
+
+            path.reverse();
+            return Ok(path);
+        }
+
+        for (id, edge) in network.out_edges(current) {
+            let target = edge.target();
+            let distance = edge.distance() + old_distance;
+
+            heap.push((
+                Reverse(F32(distance + spare_distance)),
+                F32(distance),
+                target,
+                (current, id),
+            ));
+        }
+
+        // for (id, edge) in network.in_edges(child) {
+        //     let target = edge.target();
+        //     let distance = edge.distance() + old_distance;
+
+        //     heap.push((
+        //         F32(distance + spare(child, target)),
+        //         F32(distance),
+        //         target,
+        //         (child, id),
+        //     ));
+        // }
+    }
+    println!("Not found but Evaluated: {}", evaluated);
+
+    return Err(String::from("No path found"));
+    // Ok(test)
 }

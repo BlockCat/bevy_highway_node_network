@@ -17,3 +17,11 @@ Changed old neighbourhood using hashmap to new neighbourhood using radius:
 | N | 4 | 30| 4 | 30|
 |ms |696| 4453| 452 |3682|
 
+Phase 1 generation:
+```
+time:   [20.726 s 22.190 s 23.603 s]
+```
+
+
+# TODO:
+Display layers in bevy.

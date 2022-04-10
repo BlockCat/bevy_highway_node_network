@@ -1,8 +1,15 @@
-use crate::{BackwardNeighbourhood, DirectedNetworkGraph, ForwardNeighbourhood, NetworkData};
-use rayon::prelude::*;
 use std::collections::HashSet;
 
-mod dijkstra;
+use self::intermediate_network::{IntermediateData, IntermediateNetwork};
+use crate::{
+    highway::intermediate_network::IntermediateEdge, BackwardNeighbourhood, DirectedNetworkGraph,
+    ForwardNeighbourhood, NetworkData, ShortcutState,
+};
+use rayon::prelude::*;
+
+pub mod core;
+pub mod dijkstra;
+pub mod intermediate_network;
 
 macro_rules! stopwatch {
     ($x:expr) => {{
@@ -37,10 +44,21 @@ macro_rules! stopwatch {
     }};
 }
 
-pub fn phase_1<D: NetworkData>(
+pub fn calculate_layer<D: NetworkData>(
     size: usize,
     network: &DirectedNetworkGraph<D>,
-) -> HashSet<crate::EdgeId> {
+    contraction_factor: f32,
+) -> DirectedNetworkGraph<IntermediateData> {
+    let intermediate = phase_1(size, network);
+
+    // let intermediate = phase_2(intermediate, contraction_factor);
+
+    DirectedNetworkGraph::from(intermediate)
+}
+pub(crate) fn phase_1<D: NetworkData>(
+    size: usize,
+    network: &DirectedNetworkGraph<D>,
+) -> IntermediateNetwork {
     println!("Start computing (forward backward)");
 
     let (duration, computed) = stopwatch!(ComputedState::new(size, network));
@@ -58,10 +76,32 @@ pub fn phase_1<D: NetworkData>(
         .nodes()
         .par_iter()
         .enumerate()
-        .flat_map_iter(|(id, _)| dijkstra::calculate_edges(id.into(), &computed, network).into_iter())
+        .flat_map_iter(|(id, _)| dijkstra::calculate_edges(id.into(), &computed, network))
         .collect::<HashSet<_>>();
+
+    let edges = edges
+        .into_iter()
+        .map(|(source, edge_id)| {
+            let edge = network.edge(edge_id);
+            IntermediateEdge::new(
+                source,
+                edge.target(),
+                edge.distance(),
+                ShortcutState::Single(edge.edge_id),
+                crate::builder::EdgeDirection::Forward,
+            )
+        })
+        .collect();
     println!("Finished computing (edges collections)");
+
     edges
+}
+
+/**
+ * Calculate the core network
+ */
+fn phase_2(intermediate: IntermediateNetwork, contraction_factor: f32) -> IntermediateNetwork {
+    core::core_network_with_patch(intermediate, contraction_factor)
 }
 
 pub struct ComputedState {
