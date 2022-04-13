@@ -21,6 +21,15 @@ pub enum ShortcutState<T> {
     Shortcut(Vec<T>),
 }
 
+impl<T> From<ShortcutState<T>> for Vec<T> {
+    fn from(s: ShortcutState<T>) -> Self {
+        match s {
+            ShortcutState::Single(a) => vec![a],
+            ShortcutState::Shortcut(a) => a,
+        }
+    }
+}
+
 #[derive(Debug, PartialEq, Eq, Clone, Serialize, Deserialize)]
 pub struct NetworkNode {
     start_edge_index: u32,

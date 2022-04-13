@@ -1,4 +1,4 @@
-use crate::{DirectedNetworkGraph, NetworkData, NetworkEdge, NetworkNode, NodeId};
+use crate::{DirectedNetworkGraph, NetworkData, NetworkEdge, NetworkNode, NodeId, ShortcutState};
 use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, fmt::Debug, hash::Hash};
 
@@ -29,6 +29,7 @@ impl NodeBuilder for DefaultNodeBuilder {
 pub trait EdgeBuilder: Clone {
     type Data: Clone;
     fn data(&self) -> Self::Data;
+    fn road_id(&self) -> ShortcutState<usize>;
     fn source(&self) -> NodeId;
     fn target(&self) -> NodeId;
     fn weight(&self) -> f32;
@@ -36,7 +37,7 @@ pub trait EdgeBuilder: Clone {
 }
 
 #[derive(Debug, Clone)]
-pub struct DefaultEdgeBuilder(NodeId, NodeId, f32, EdgeDirection);
+pub struct DefaultEdgeBuilder(NodeId, NodeId, f32, usize, EdgeDirection);
 
 impl EdgeBuilder for DefaultEdgeBuilder {
     type Data = ();
@@ -57,20 +58,34 @@ impl EdgeBuilder for DefaultEdgeBuilder {
         self.2
     }
 
+    fn road_id(&self) -> ShortcutState<usize> {
+        ShortcutState::Single(self.3)
+    }
+
     fn direction(&self) -> EdgeDirection {
-        self.3
+        self.4
     }
 }
 
 impl DefaultEdgeBuilder {
-    pub fn forward(source: NodeId, target: NodeId, weight: f32) -> DefaultEdgeBuilder {
-        Self(source, target, weight, EdgeDirection::Forward)
+    pub fn forward(
+        source: NodeId,
+        target: NodeId,
+        road_id: usize,
+        weight: f32,
+    ) -> DefaultEdgeBuilder {
+        Self(source, target, weight, road_id, EdgeDirection::Forward)
     }
-    pub fn backward(source: NodeId, target: NodeId, weight: f32) -> DefaultEdgeBuilder {
-        Self(source, target, weight, EdgeDirection::Backward)
+    pub fn backward(
+        source: NodeId,
+        target: NodeId,
+        road_id: usize,
+        weight: f32,
+    ) -> DefaultEdgeBuilder {
+        Self(source, target, weight, road_id, EdgeDirection::Backward)
     }
-    pub fn both(source: NodeId, target: NodeId, weight: f32) -> DefaultEdgeBuilder {
-        Self(source, target, weight, EdgeDirection::Both)
+    pub fn both(source: NodeId, target: NodeId, road_id: usize, weight: f32) -> DefaultEdgeBuilder {
+        Self(source, target, weight, road_id, EdgeDirection::Both)
     }
 }
 
@@ -129,7 +144,7 @@ impl<V: NodeBuilder, E: EdgeBuilder> DirectedNetworkBuilder<V, E> {
                 let network_edge =
                     NetworkEdge::new(edges.len() as u32, target_node, data.weight(), direction);
 
-                network_data.add_edge(network_edge.edge_id.into(), data.data());
+                network_data.add_edge(network_edge.edge_id.into(), data.data(), data.road_id());
                 edges.push(network_edge);
             }
 
