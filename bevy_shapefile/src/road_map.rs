@@ -1,29 +1,25 @@
-use crate::ShapeError;
+use crate::{
+    spatial::{JunctionSpatialIndex, RoadSection, RoadSpatialIndex},
+    ShapeError,
+};
 use bevy::{
     math::{Vec2, Vec3},
     render::primitives::Aabb,
 };
 use rayon::prelude::*;
-use rstar::{PointDistance, RStarInsertionStrategy, RTree, RTreeObject, RTreeParams};
-use serde::{Deserialize, Deserializer, Serialize, Serializer};
-use shapefile::Polyline;
+use rstar::{RStarInsertionStrategy, RTree, RTreeParams};
+use serde::{Deserialize, Serialize};
+use shapefile::{
+    dbase::{FieldValue, Record},
+    Polyline,
+};
 use std::{collections::HashMap, fs::File, path::Path};
 
 #[derive(Serialize, Deserialize, Debug)]
-pub struct RoadMap {    
+pub struct RoadMap {
     pub roads: HashMap<usize, RoadSection>,
-    pub map: rstar::RTree<RoadSpatialIndex, Params>,
-}
-
-#[derive(Serialize, Deserialize, Debug)]
-pub struct RoadSection {
-    pub id: usize,
-    pub points: Vec<Vec2>,
-    #[serde(
-        serialize_with = "serialize_aabb",
-        deserialize_with = "deserialize_aabb"
-    )]
-    pub aabb: Aabb,
+    pub junction_spatial: rstar::RTree<JunctionSpatialIndex, Params>,
+    pub road_spatial: rstar::RTree<RoadSpatialIndex, Params>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -34,45 +30,6 @@ impl RTreeParams for Params {
     const MAX_SIZE: usize = 40;
     const REINSERTION_COUNT: usize = 1;
     type DefaultInsertionStrategy = RStarInsertionStrategy;
-}
-
-#[derive(Serialize, Deserialize, Debug)]
-pub struct RoadSpatialIndex {
-    pub id: usize,
-    #[serde(
-        serialize_with = "serialize_aabb",
-        deserialize_with = "deserialize_aabb"
-    )]
-    pub aabb: Aabb,
-}
-
-impl RTreeObject for RoadSpatialIndex {
-    type Envelope = rstar::AABB<[f32; 2]>;
-
-    fn envelope(&self) -> Self::Envelope {
-        let min = self.aabb.min();
-        let max = self.aabb.max();
-        rstar::AABB::from_corners([min.x, min.y], [max.x, max.y])
-    }
-}
-
-fn deserialize_aabb<'de, D>(deserializer: D) -> Result<Aabb, D::Error>
-where
-    D: Deserializer<'de>,
-{
-    let (min, max): (Vec3, Vec3) = Deserialize::deserialize(deserializer)?;
-
-    Ok(Aabb::from_min_max(min, max))
-}
-
-fn serialize_aabb<S>(aabb: &Aabb, serializer: S) -> Result<S::Ok, S::Error>
-where
-    S: Serializer,
-{
-    let min = aabb.min();
-    let max = aabb.max();
-
-    (min, max).serialize(serializer)
 }
 
 impl RoadMap {
@@ -92,13 +49,30 @@ impl RoadMap {
         println!("Start read");
 
         let roads =
-            shapefile::read_shapes_as::<P, Polyline>(path).map_err(|x| ShapeError::Shape(x))?;
+            shapefile::read_as::<P, Polyline, Record>(path).map_err(|x| ShapeError::Shape(x))?;
 
         println!("Start conversion");
+
+        let junctions = roads
+            .par_iter()
+            .flat_map_iter(|(line, record)| {
+                let junction_start = get_usize(record, "JTE_ID_BEG").unwrap();
+                let junction_end = get_usize(record, "JTE_ID_END").unwrap();
+
+                let start = line.part(0).and_then(|p| p.first()).unwrap();
+                let end = line.part(0).and_then(|p| p.last()).unwrap();
+
+                [
+                    (junction_start, Vec2::new(start.x as f32, start.y as f32)),
+                    (junction_end, Vec2::new(end.x as f32, end.y as f32)),
+                ]
+            })
+            .collect::<HashMap<_, _>>();
+
         let roads = roads
             .into_par_iter()
             .enumerate()
-            .map(|(id, line)| {
+            .map(|(id, (line, _))| {
                 assert!(line.parts().len() == 1);
 
                 let points = line
@@ -129,12 +103,36 @@ impl RoadMap {
             })
             .collect();
 
+        let junction_indeces = junctions
+            .into_iter()
+            .map(|x| JunctionSpatialIndex {
+                junction_id: x.0,
+                location: x.1,
+            })
+            .collect::<Vec<_>>();
+
         println!("Inserting spatial indices");
 
-        let map: RTree<RoadSpatialIndex, Params> = RTree::bulk_load_with_params(spatial_indeces);
+        let road_spatial: RTree<RoadSpatialIndex, Params> =
+            RTree::bulk_load_with_params(spatial_indeces);
+
+        let junction_spatial = RTree::bulk_load_with_params(junction_indeces);
 
         println!("Created tree");
 
-        Ok(RoadMap { roads, map })
+        Ok(RoadMap {
+            roads,
+            road_spatial,
+            junction_spatial,
+        })
     }
+}
+
+fn get_usize(record: &Record, name: &str) -> Option<usize> {
+    let value = record.get(name).unwrap();
+
+    if let FieldValue::Numeric(x) = value {
+        return x.map(|x| x as usize);
+    }
+    unreachable!();
 }

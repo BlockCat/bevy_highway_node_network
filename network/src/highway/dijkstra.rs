@@ -91,7 +91,6 @@ fn create_directed_acyclic_graph<D: NetworkData>(
         let border_distance = border_distance(
             s0,
             state.current,
-            state.distance,
             &parents,
             computed,
             parent_border_distance,
@@ -244,18 +243,15 @@ fn initialize_heap<D: NetworkData>(
 fn border_distance<A>(
     s0: NodeId,
     node: NodeId,
-    distance: f32,
-    parents: &HashMap<NodeId, A>,
+    parents: &HashMap<NodeId, (A, f32)>,
     computed: &ComputedState,
     parent_border_distance: f32,
 ) -> f32 {
-    let min_border_distance = if parents.contains_key(&s0) {
-        distance + computed.forward.radius(node)
+    if let Some((_, distance)) = parents.get(&s0) {
+        *distance + computed.forward.radius(node)
     } else {
-        0.0
-    };
-
-    f32::max(min_border_distance, parent_border_distance)
+        parent_border_distance
+    }
 }
 
 fn reference_distance<A>(
@@ -268,7 +264,7 @@ fn reference_distance<A>(
     if max_parent_reference_distance == f32::INFINITY && distance > border_distance {
         parents
             .keys()
-            .flat_map(|p| visited[p].parents.iter())
+            .flat_map(|parent| visited[parent].parents.iter())
             .map(|sp| visited[sp.0].distance)
             .max_by(|a, b| a.partial_cmp(b).unwrap())
             .unwrap()

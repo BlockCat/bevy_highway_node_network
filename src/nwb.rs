@@ -14,7 +14,7 @@ use std::{collections::HashMap, hash::Hash, path::Path};
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
 pub struct NWBNetworkData {
     pub node_junctions: Vec<(usize, Vec2)>,
-    edge_id: Vec<usize>, // for sql
+    edge_id: Vec<usize>, // for sql, not road_id
 }
 
 impl NetworkData for NWBNetworkData {
@@ -75,7 +75,7 @@ impl NodeBuilder for RoadNode {
 
 #[derive(Debug, Clone)]
 pub struct RoadEdge {
-    road_id: usize,
+    road_id: usize, // Points to sql
     distance: f32,
     source: NodeId,
     target: NodeId,

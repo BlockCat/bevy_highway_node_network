@@ -1,76 +1,27 @@
 use std::collections::HashMap;
 
+use crate::{nwb::NWBNetworkData, world::WorldEntity};
 use bevy::{prelude::*, tasks::ComputeTaskPool};
-use bevy_egui::{egui, EguiContext, EguiPlugin};
+use bevy_egui::{egui, EguiContext};
 use network::{intermediate_network::IntermediateData, DirectedNetworkGraph};
 
-use crate::{nwb::NWBNetworkData, world::WorldEntity};
-
-pub struct HighwayUiPlugin;
-
 #[derive(Debug, Default)]
-pub struct GuiState {
-    preprocess_layers: usize,
-    neighbourhood_size: usize,
-    contraction_factor: f32,
-    base_selected: bool,
-    layers_selected: Vec<bool>,
+pub struct LayerState {
+    pub preprocess_layers: usize,
+    pub neighbourhood_size: usize,
+    pub contraction_factor: f32,
+    pub base_selected: bool,
+    pub layers_selected: Vec<bool>,
 }
 
-impl Plugin for HighwayUiPlugin {
-    fn build(&self, app: &mut bevy::prelude::App) {
-        app.add_plugin(EguiPlugin)
-            .insert_resource(GuiState {
-                preprocess_layers: 6,
-                neighbourhood_size: 30,
-                contraction_factor: 2.0,
-                base_selected: false,
-                layers_selected: vec![],
-            })
-            .add_system(color_system)
-            .add_system(gui_system);
-    }
-}
-
-fn color_system(
-    pool: Res<ComputeTaskPool>,
-    ui_state: Res<GuiState>,
-    preprocess: Option<Res<PreProcess>>,
-    mut query: Query<&mut WorldEntity>,
-) {
-    if let Some(preprocess) = preprocess {
-        if ui_state.base_selected {
-            query.par_for_each_mut(&pool, 32, |mut we| {
-                we.selected = true;
-            });
-        } else {
-            for (i, sel) in ui_state.layers_selected.iter().enumerate() {
-                query.par_for_each_mut(&pool, 32, |mut we| {
-                    we.selected = false;
-                    if *sel {
-                        if preprocess
-                            .road_data_level
-                            .get(&we.id as &u32)
-                            .map(|&x| x > i as u8)
-                            .unwrap_or_default()
-                        {
-                            we.selected = true;
-                        }
-                    }
-                });
-            }
-        }
-    }
-}
-
-fn gui_system(
+pub fn gui_system(
     mut commands: Commands,
     base_network: Res<DirectedNetworkGraph<NWBNetworkData>>,
     preprocess: Option<Res<PreProcess>>,
     mut egui_context: ResMut<EguiContext>,
-    mut state: ResMut<GuiState>,
+    mut state: ResMut<LayerState>,
 ) {
-    egui::Window::new("Menu").show(egui_context.ctx_mut(), |ui| {
+    egui::Window::new("Preprocessing").show(egui_context.ctx_mut(), |ui| {
         ui.label("Preprocess");
         ui.add(egui::Slider::new(&mut state.preprocess_layers, 1..=20).text("Layers"));
         ui.add(egui::Slider::new(&mut state.neighbourhood_size, 1..=90).text("Neighbourhood size"));
@@ -125,6 +76,36 @@ fn clicked_preprocess(
     PreProcess::new(base, layers)
 }
 
+pub fn colouring_system(
+    pool: Res<ComputeTaskPool>,
+    ui_state: Res<LayerState>,
+    preprocess: Option<Res<PreProcess>>,
+    mut query: Query<&mut WorldEntity>,
+) {
+    if let Some(preprocess) = preprocess {
+        if ui_state.base_selected {
+            query.par_for_each_mut(&pool, 32, |mut we| {
+                we.selected = Some(Color::GREEN);
+            });
+        } else {
+            for (i, sel) in ui_state.layers_selected.iter().enumerate() {
+                query.par_for_each_mut(&pool, 32, |mut we| {
+                    if *sel {
+                        if preprocess
+                            .road_data_level
+                            .get(&we.id as &u32)
+                            .map(|&x| x > i as u8)
+                            .unwrap_or_default()
+                        {
+                            we.selected = Some(Color::GREEN);
+                        }
+                    }
+                });
+            }
+        }
+    }
+}
+
 pub struct PreProcess {
     pub base: DirectedNetworkGraph<NWBNetworkData>,
     pub layers: Vec<DirectedNetworkGraph<IntermediateData>>,
@@ -137,12 +118,13 @@ impl PreProcess {
         layers: Vec<DirectedNetworkGraph<IntermediateData>>,
     ) -> Self {
         let mut road_data_level = HashMap::new();
+
         for id in 0..base.edges().len() {
             let edge = base.edge(id.into()).edge_id;
             road_data_level.insert(edge, 0u8);
         }
 
-        for (id, layer) in layers.iter().enumerate() {
+        for (_, layer) in layers.iter().enumerate() {
             for i in 0..layer.edges().len() {
                 match layer.edge_data(i.into()) {
                     network::ShortcutState::Single(a) => {

@@ -10,6 +10,7 @@ use rayon::prelude::*;
 pub mod core;
 pub mod dijkstra;
 pub mod intermediate_network;
+pub mod dag;
 
 macro_rules! stopwatch {
     ($x:expr) => {{
