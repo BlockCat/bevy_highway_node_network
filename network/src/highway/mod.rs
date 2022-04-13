@@ -8,9 +8,9 @@ use crate::{
 use rayon::prelude::*;
 
 pub mod core;
+pub mod dag;
 pub mod dijkstra;
 pub mod intermediate_network;
-pub mod dag;
 
 macro_rules! stopwatch {
     ($x:expr) => {{
@@ -89,6 +89,7 @@ pub(crate) fn phase_1<D: NetworkData>(
                 edge.target(),
                 edge.distance(),
                 ShortcutState::Single(edge.edge_id),
+                network.data.edge_road_id(edge_id),
                 crate::builder::EdgeDirection::Forward,
             )
         })

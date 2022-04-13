@@ -74,6 +74,10 @@ impl EdgeBuilder for TestEdge {
     fn direction(&self) -> crate::builder::EdgeDirection {
         self.3
     }
+
+    fn road_id(&self) -> crate::ShortcutState<usize> {
+        todo!()
+    }
 }
 
 impl TestEdge {

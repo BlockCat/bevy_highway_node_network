@@ -2,7 +2,7 @@ use bevy::math::Vec2;
 use bevy_shapefile::RoadMap;
 use network::{
     builder::{DirectedNetworkBuilder, EdgeBuilder, EdgeDirection, NodeBuilder},
-    DirectedNetworkGraph, EdgeId, NetworkData, NodeId,
+    DirectedNetworkGraph, EdgeId, NetworkData, NodeId, ShortcutState,
 };
 use rusqlite::{
     types::{FromSql, FromSqlError},
@@ -14,7 +14,7 @@ use std::{collections::HashMap, hash::Hash, path::Path};
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
 pub struct NWBNetworkData {
     pub node_junctions: Vec<(usize, Vec2)>,
-    edge_id: Vec<usize>, // for sql, not road_id
+    edge_id: Vec<usize>, // for sql, not nwb road_id
 }
 
 impl NetworkData for NWBNetworkData {
@@ -40,8 +40,12 @@ impl NetworkData for NWBNetworkData {
         self.node_junctions[node.0 as usize] = data;
     }
 
-    fn add_edge(&mut self, edge: EdgeId, data: Self::EdgeData) {
+    fn add_edge(&mut self, edge: EdgeId, data: Self::EdgeData, _: ShortcutState<usize>) {
         self.edge_id[edge.0 as usize] = data;
+    }
+
+    fn edge_road_id(&self, edge: EdgeId) -> network::ShortcutState<usize> {
+        ShortcutState::Single(self.edge_id[edge.0 as usize])
     }
 }
 
@@ -75,7 +79,7 @@ impl NodeBuilder for RoadNode {
 
 #[derive(Debug, Clone)]
 pub struct RoadEdge {
-    road_id: usize, // Points to sql
+    sql_id: usize, // Points to sql
     distance: f32,
     source: NodeId,
     target: NodeId,
@@ -85,6 +89,10 @@ pub struct RoadEdge {
 impl EdgeBuilder for RoadEdge {
     type Data = usize;
 
+    fn data(&self) -> Self::Data {
+        self.sql_id
+    }
+
     fn source(&self) -> network::NodeId {
         self.source
     }
@@ -93,16 +101,16 @@ impl EdgeBuilder for RoadEdge {
         self.target
     }
 
-    fn data(&self) -> Self::Data {
-        self.road_id
-    }
-
     fn weight(&self) -> f32 {
         self.distance
     }
 
     fn direction(&self) -> network::builder::EdgeDirection {
         self.direction
+    }
+
+    fn road_id(&self) -> ShortcutState<usize> {
+        ShortcutState::Single(self.sql_id)
     }
 }
 
@@ -149,9 +157,8 @@ pub fn preprocess_roadmap<P: AsRef<Path>>(
         .map(|x| x.unwrap())
         .collect::<HashMap<usize, (usize, usize, RijRichting)>>();
 
- 
-    for (&id, section) in roads {
-        let (road_id_start, road_id_end, rij_richting) = statement[&id];
+    for (&sql_id, section) in roads {
+        let (road_id_start, road_id_end, rij_richting) = statement[&sql_id];
 
         let source = builder.add_node(RoadNode {
             junction_id: road_id_start,
@@ -169,7 +176,7 @@ pub fn preprocess_roadmap<P: AsRef<Path>>(
             target,
             direction: rij_richting.0,
             distance,
-            road_id: id,
+            sql_id,
         });
     }
 

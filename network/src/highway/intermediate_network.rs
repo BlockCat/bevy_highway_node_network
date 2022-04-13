@@ -12,6 +12,7 @@ pub struct IntermediateNode(pub NodeId);
 #[derive(Debug, Clone)]
 pub struct IntermediateEdge {
     data: ShortcutState<u32>,
+    road_id: ShortcutState<usize>,
     direction: EdgeDirection,
     source: NodeId,
     target: NodeId,
@@ -27,7 +28,7 @@ impl NodeBuilder for IntermediateNode {
 }
 
 impl EdgeBuilder for IntermediateEdge {
-    type Data = ShortcutState<u32>;
+    type Data = ShortcutState<u32>; // Points to road_id
 
     fn data(&self) -> Self::Data {
         self.data.clone()
@@ -48,6 +49,10 @@ impl EdgeBuilder for IntermediateEdge {
     fn direction(&self) -> EdgeDirection {
         self.direction
     }
+
+    fn road_id(&self) -> ShortcutState<usize> {
+        self.road_id.clone()
+    }
 }
 
 impl IntermediateEdge {
@@ -56,6 +61,7 @@ impl IntermediateEdge {
         target: NodeId,
         weight: f32,
         data: ShortcutState<u32>,
+        road_id: ShortcutState<usize>,
         direction: EdgeDirection,
     ) -> Self {
         Self {
@@ -64,6 +70,7 @@ impl IntermediateEdge {
             weight,
             data,
             direction,
+            road_id,
         }
     }
 }
@@ -144,12 +151,13 @@ impl IntermediateNetwork {
                 debug_assert_eq!(child, &child_edge.target);
                 if parent.0 != child.0 {
                     let distance = parent_edge.weight + child_edge.weight;
-                    let state = collect_shortcut_data_edges(parent_edge, child_edge);
+                    let (state, road_ids) = collect_shortcut_data_edges(parent_edge, child_edge);
                     let shortcut = IntermediateEdge::new(
                         *parent,
                         *child,
                         distance,
                         ShortcutState::Shortcut(state),
+                        ShortcutState::Shortcut(road_ids),
                         EdgeDirection::Forward,
                     );
 
@@ -173,25 +181,14 @@ impl IntermediateNetwork {
 fn collect_shortcut_data_edges(
     parent_edge: &IntermediateEdge,
     child_edge: &IntermediateEdge,
-) -> Vec<u32> {
-    match (&parent_edge.data, &child_edge.data) {
-        (ShortcutState::Single(a), ShortcutState::Single(b)) => vec![*a, *b],
-        (ShortcutState::Single(a), ShortcutState::Shortcut(b)) => {
-            let mut s = vec![*a];
-            s.extend(b);
-            s
-        }
-        (ShortcutState::Shortcut(a), ShortcutState::Single(b)) => {
-            let mut s = a.clone();
-            s.push(*b);
-            s
-        }
-        (ShortcutState::Shortcut(a), ShortcutState::Shortcut(b)) => {
-            let mut s = a.clone();
-            s.extend(b);
-            s
-        }
-    }
+) -> (Vec<u32>, Vec<usize>) {
+    let mut edge_id_a = Vec::from(parent_edge.data.clone());
+    let mut road_id_a = Vec::from(parent_edge.road_id.clone());
+
+    edge_id_a.extend(Vec::from(child_edge.data.clone()));
+    road_id_a.extend(Vec::from(child_edge.road_id.clone()));
+
+    (edge_id_a, road_id_a)
 }
 
 impl FromIterator<IntermediateEdge> for IntermediateNetwork {
@@ -225,6 +222,7 @@ impl FromParallelIterator<IntermediateEdge> for IntermediateNetwork {
 pub struct IntermediateData {
     references: HashMap<NodeId, NodeId>,
     shortcuts: HashMap<EdgeId, ShortcutState<u32>>,
+    road_ids: HashMap<EdgeId, ShortcutState<usize>>,
 }
 
 impl NetworkData for IntermediateData {
@@ -243,13 +241,19 @@ impl NetworkData for IntermediateData {
         Self {
             references: HashMap::with_capacity(node_size),
             shortcuts: HashMap::with_capacity(edge_size),
+            road_ids: HashMap::with_capacity(edge_size),
         }
     }
 
     fn add_node(&mut self, _: NodeId, _: Self::NodeData) {}
 
-    fn add_edge(&mut self, edge: EdgeId, data: Self::EdgeData) {
+    fn add_edge(&mut self, edge: EdgeId, data: Self::EdgeData, road_id: ShortcutState<usize>) {
         self.shortcuts.insert(edge, data);
+        self.road_ids.insert(edge, road_id);
+    }
+
+    fn edge_road_id(&self, edge: EdgeId) -> ShortcutState<usize> {
+        self.road_ids[&edge].clone()
     }
 }
 

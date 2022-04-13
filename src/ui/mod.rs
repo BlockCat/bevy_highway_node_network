@@ -3,7 +3,7 @@ use bevy::prelude::*;
 use bevy_egui::EguiPlugin;
 use bevy_shapefile::RoadMap;
 pub use layers::PreProcess;
-use network::{DirectedNetworkGraph, NodeId};
+use network::{highway::ComputedState, DirectedNetworkGraph, NodeId};
 use std::collections::HashSet;
 
 use self::layers::LayerState;
@@ -30,12 +30,23 @@ impl Plugin for HighwayUiPlugin {
 }
 
 fn point_system(
+    mut commands: Commands,
     windows: Res<Windows>,
+    computed: Option<Res<ComputedState>>,
     network: Res<DirectedNetworkGraph<NWBNetworkData>>,
     road_map: Res<RoadMap>,
     camera_q: Query<(&GlobalTransform, &Camera)>,
     mut query: Query<&mut WorldEntity>,
 ) {
+    let computed = if let Some(computed) = computed {
+        computed
+    } else {
+        let l = ComputedState::new(30, &network);
+
+        commands.insert_resource(l);
+
+        return;
+    };
     if let Some(window) = windows.get_primary() {
         if let Ok((transform, camera)) = camera_q.get_single() {
             if let Some(position) = window.cursor_position() {

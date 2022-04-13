@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use crate::{nwb::NWBNetworkData, world::WorldEntity};
 use bevy::{prelude::*, tasks::ComputeTaskPool};
 use bevy_egui::{egui, EguiContext};
-use network::{intermediate_network::IntermediateData, DirectedNetworkGraph};
+use network::{intermediate_network::IntermediateData, DirectedNetworkGraph, NetworkData};
 
 #[derive(Debug, Default)]
 pub struct LayerState {
@@ -93,7 +93,7 @@ pub fn colouring_system(
                     if *sel {
                         if preprocess
                             .road_data_level
-                            .get(&we.id as &u32)
+                            .get(&(we.id as usize))
                             .map(|&x| x > i as u8)
                             .unwrap_or_default()
                         {
@@ -109,7 +109,7 @@ pub fn colouring_system(
 pub struct PreProcess {
     pub base: DirectedNetworkGraph<NWBNetworkData>,
     pub layers: Vec<DirectedNetworkGraph<IntermediateData>>,
-    pub road_data_level: HashMap<u32, u8>,
+    pub road_data_level: HashMap<usize, u8>,
 }
 
 impl PreProcess {
@@ -120,21 +120,21 @@ impl PreProcess {
         let mut road_data_level = HashMap::new();
 
         for id in 0..base.edges().len() {
-            let edge = base.edge(id.into()).edge_id;
-            road_data_level.insert(edge, 0u8);
+            let edge = base.edge_data(id.into());
+            road_data_level.insert(*edge, 0u8);
         }
 
         for (_, layer) in layers.iter().enumerate() {
             for i in 0..layer.edges().len() {
-                match layer.edge_data(i.into()) {
+                match layer.data.edge_road_id(i.into()) {
                     network::ShortcutState::Single(a) => {
-                        road_data_level.entry(*a).and_modify(|f| {
+                        road_data_level.entry(a).and_modify(|f| {
                             *f = i as u8 + 1;
                         });
                     }
                     network::ShortcutState::Shortcut(b) => {
                         for a in b {
-                            road_data_level.entry(*a).and_modify(|f| {
+                            road_data_level.entry(a).and_modify(|f| {
                                 *f = i as u8 + 1;
                             });
                         }

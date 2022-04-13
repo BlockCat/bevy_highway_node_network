@@ -1,10 +1,12 @@
 #![feature(map_try_insert)]
+#![feature(is_sorted)]
+
 pub use directed_network::*;
 pub use neighbourhood::*;
 
-mod directed_network;
-mod highway;
-mod neighbourhood;
+pub mod directed_network;
+pub mod highway;
+pub mod neighbourhood;
 
 pub use highway::intermediate_network;
 
