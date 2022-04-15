@@ -88,7 +88,7 @@ impl HighwayNodeQueue {
                 self.active -= 1;
             }
             if self.visited.contains_key(&state.current) {
-                assert!(state.distance > self.visited[&state.current].distance);
+                debug_assert!(state.distance > self.visited[&state.current].distance);
                 continue;
             }
 
@@ -151,7 +151,7 @@ impl HighwayNodeQueue {
     }
 
     pub fn is_active(&self) -> bool {
-        assert_eq!(
+        debug_assert_eq!(
             self.active,
             self.heap.iter().filter(|x| x.parent.active).count()
         );

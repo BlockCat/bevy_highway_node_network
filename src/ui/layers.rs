@@ -1,9 +1,9 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, path::Path};
 
 use crate::{nwb::NWBNetworkData, world::WorldEntity};
 use bevy::{prelude::*, tasks::ComputeTaskPool};
 use bevy_egui::{egui, EguiContext};
-use network::{intermediate_network::IntermediateData, DirectedNetworkGraph, NetworkData};
+use network::{intermediate_network::IntermediateData, DirectedNetworkGraph, EdgeId, NetworkData};
 
 #[derive(Debug, Default)]
 pub struct LayerState {
@@ -50,6 +50,23 @@ pub fn gui_system(
     });
 }
 
+fn load_or_calculate<P: AsRef<Path>, F>(
+    path: P,
+    calculate: F,
+) -> DirectedNetworkGraph<IntermediateData>
+where
+    F: Fn() -> DirectedNetworkGraph<IntermediateData>,
+{
+    if let Ok(network) = crate::read_file(&path) {
+        network
+    } else {
+        let network = calculate();
+        crate::write_file(&network, path).expect("Could not write");
+
+        network
+    }
+}
+
 fn clicked_preprocess(
     base: DirectedNetworkGraph<NWBNetworkData>,
     layer_count: usize,
@@ -60,16 +77,33 @@ fn clicked_preprocess(
 
     let mut layers = Vec::new();
 
-    layers.push(network::calculate_layer(
-        neighbourhood,
-        &base,
-        contraction_factor,
-    ));
+    layers.push(load_or_calculate("data/layer_0.graph", || {
+        network::calculate_layer(neighbourhood, &base, contraction_factor)
+    }));
 
-    for _ in 1..layer_count {
+    println!(
+        "Base edges: {}, nodes: {}",
+        base.edges().len(),
+        base.nodes().len()
+    );
+
+    for i in 1..layer_count {
         let size = neighbourhood;
         let network = layers.last().unwrap();
-        let next_layer = network::calculate_layer(size, network, contraction_factor);
+        let path = format!("data/layer_{}.graph", i);
+        let next_layer = load_or_calculate(path, || {
+            network::calculate_layer(size, network, contraction_factor)
+        });
+
+        println!(
+            "Layer {} edges: {}/{}, nodes: {}/{}",
+            i,
+            next_layer.edges().len(),
+            network.edges().len() as f32 / next_layer.edges().len() as f32,
+            next_layer.nodes().len(),
+            network.nodes().len() as f32 / next_layer.nodes().len() as f32
+        );
+
         layers.push(next_layer);
     }
 
@@ -88,8 +122,8 @@ pub fn colouring_system(
                 we.selected = Some(Color::GREEN);
             });
         } else {
-            for (i, sel) in ui_state.layers_selected.iter().enumerate() {
-                query.par_for_each_mut(&pool, 32, |mut we| {
+            query.par_for_each_mut(&pool, 32, |mut we| {
+                for (i, sel) in ui_state.layers_selected.iter().enumerate() {
                     if *sel {
                         if preprocess
                             .road_data_level
@@ -100,8 +134,8 @@ pub fn colouring_system(
                             we.selected = Some(Color::GREEN);
                         }
                     }
-                });
-            }
+                }
+            });
         }
     }
 }
@@ -117,36 +151,47 @@ impl PreProcess {
         base: DirectedNetworkGraph<NWBNetworkData>,
         layers: Vec<DirectedNetworkGraph<IntermediateData>>,
     ) -> Self {
-        let mut road_data_level = HashMap::new();
+        let mut road_data_level = (0..base.edges().len())
+            .map(|x| EdgeId::from(x))
+            .flat_map(|id| Vec::from(base.data.edge_road_id(id)))
+            .map(|x| (x, 0))
+            .collect::<HashMap<_, _>>();
 
-        for id in 0..base.edges().len() {
-            let edge = base.edge_data(id.into());
-            road_data_level.insert(*edge, 0u8);
-        }
+        println!("Base line of: {}", road_data_level.len());
+        // process_edges(0, &base, &mut road_data_level);
 
-        for (_, layer) in layers.iter().enumerate() {
-            for i in 0..layer.edges().len() {
-                match layer.data.edge_road_id(i.into()) {
-                    network::ShortcutState::Single(a) => {
-                        road_data_level.entry(a).and_modify(|f| {
-                            *f = i as u8 + 1;
-                        });
-                    }
-                    network::ShortcutState::Shortcut(b) => {
-                        for a in b {
-                            road_data_level.entry(a).and_modify(|f| {
-                                *f = i as u8 + 1;
-                            });
-                        }
-                    }
-                }
-            }
+        for (layer_id, layer) in layers.iter().enumerate() {
+            process_edges(layer_id as u8 + 1, layer, &mut road_data_level);
         }
 
         PreProcess {
             base,
             layers,
             road_data_level,
+        }
+    }
+}
+
+fn process_edges<A: NetworkData>(
+    layer_id: u8,
+    network: &DirectedNetworkGraph<A>,
+    road_data: &mut HashMap<usize, u8>,
+) {
+    for id in 0..network.edges().len() {
+        let id = EdgeId::from(id);
+        match network.data.edge_road_id(id) {
+            network::ShortcutState::Single(a) => {
+                road_data.entry(a).and_modify(|f| {
+                    *f = layer_id;
+                });
+            }
+            network::ShortcutState::Shortcut(b) => {
+                for a in b {
+                    road_data.entry(a).and_modify(|f| {
+                        *f = layer_id;
+                    });
+                }
+            }
         }
     }
 }

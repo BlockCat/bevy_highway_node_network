@@ -93,7 +93,7 @@ fn collect_next_level_edges(
     let mut collected_edges = Vec::new();
     let mut tentative_slacks = HashMap::new();
 
-    assert!(sorted_nodes
+    debug_assert!(sorted_nodes
         .iter()
         .is_sorted_by_key(|x| Reverse(F32(x.1 .1))));
 

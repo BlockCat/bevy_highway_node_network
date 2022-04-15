@@ -92,18 +92,18 @@ impl DefaultEdgeBuilder {
 #[derive(Debug)]
 pub struct DirectedNetworkBuilder<V: NodeBuilder, E: EdgeBuilder> {
     nodes: HashMap<V, NodeId>,
-    edges: Vec<E>,
+    edges: HashMap<(NodeId, NodeId), E>,
 }
 
 impl<V: NodeBuilder, E: EdgeBuilder> DirectedNetworkBuilder<V, E> {
     pub fn new() -> Self {
         DirectedNetworkBuilder {
             nodes: HashMap::new(),
-            edges: Vec::new(),
+            edges: HashMap::new(),
         }
     }
     pub fn add_edge(&mut self, edge: E) -> &mut Self {
-        self.edges.push(edge);
+        self.edges.insert((edge.source(), edge.target()), edge);
         self
     }
 
@@ -122,11 +122,15 @@ impl<V: NodeBuilder, E: EdgeBuilder> DirectedNetworkBuilder<V, E> {
         let mut build_nodes = self.nodes.into_iter().collect::<Vec<_>>();
         build_nodes.sort_by_key(|d| d.1);
 
-        let mut map = HashMap::<NodeId, Vec<&E>>::new();
+        let mut map = HashMap::<NodeId, HashMap<NodeId, &E>>::new();
 
-        for edge in &self.edges {
-            map.entry(edge.source()).or_default().push(edge);
-            map.entry(edge.target()).or_default().push(edge);
+        for (_, edge) in &self.edges {
+            map.entry(edge.source())
+                .or_default()
+                .insert(edge.target(), edge);
+            map.entry(edge.target())
+                .or_default()
+                .insert(edge.source(), edge);
         }
 
         let mut network_data = D::with_size(build_nodes.len(), self.edges.len() * 2);
@@ -160,34 +164,23 @@ impl<V: NodeBuilder, E: EdgeBuilder> DirectedNetworkBuilder<V, E> {
 }
 
 fn collect_edges<E: EdgeBuilder + Sized>(
-    map: &HashMap<NodeId, Vec<&E>>,
+    map: &HashMap<NodeId, HashMap<NodeId, &E>>,
     node_id: NodeId,
 ) -> Vec<(NodeId, EdgeDirection, NodeId, E)> {
     let mut build_edges = map[&node_id]
         .iter()
-        .map(|x| {
-            let (source, direction, target) = match x.direction() {
-                EdgeDirection::Both => {
-                    if x.source() == node_id {
-                        (x.source(), EdgeDirection::Both, x.target())
-                    } else {
-                        (x.target(), EdgeDirection::Both, x.source())
-                    }
-                }
-                _ => {
-                    if x.source() == node_id {
-                        (x.source(), EdgeDirection::Forward, x.target())
-                    } else {
-                        (x.target(), EdgeDirection::Backward, x.source())
-                    }
+        .map(|(target, edge)| {
+            let direction = if map.get(target).and_then(|s| s.get(&node_id)).filter(|x| x.weight() == edge.weight()).is_some() {
+                EdgeDirection::Both
+            } else {
+                if edge.source() == node_id {
+                    EdgeDirection::Forward
+                } else {
+                    EdgeDirection::Backward
                 }
             };
 
-            assert!(source == node_id);
-
-            let data = (*x).clone();
-
-            (source, direction, target, data)
+            (node_id, direction, *target, (*edge).clone())
         })
         .collect::<Vec<_>>();
     build_edges.sort_by_key(|x| (x.0, x.1, x.2));
@@ -230,4 +223,5 @@ mod tests {
 
         assert_eq!(n1, n2);
     }
+
 }

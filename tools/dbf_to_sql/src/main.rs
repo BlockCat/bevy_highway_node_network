@@ -12,7 +12,7 @@ fn main() {
     connection
         .execute("DROP TABLE IF EXISTS wegvakken", [])
         .expect("Could not delete table");
-    
+
     connection
         .execute(CREATE_TABLE_SQL, [])
         .expect("Could not create tables");
@@ -31,41 +31,42 @@ fn main() {
 }
 
 fn execute_transaction<P: AsRef<Path>>(path: P, tx: &Transaction) {
-    let mut reader = shapefile::Reader::from_path(path).expect("Could not find path");
+    println!("Start reading");
+    let collection = shapefile::read(path).expect("Could not read path");
+    println!("Finished reading");
 
-    reader
-        .iter_shapes_and_records()
+    let mut stmt = tx.prepare(INSERT_SQL).unwrap();
+
+    collection
+        .into_iter()
         .enumerate()
-        .for_each(|(id, result)| {
-            let (_, record) = result.unwrap();
-
-            tx.execute(
-                INSERT_SQL,
-                params![
-                    id,
-                    get_usize(&record, "WVK_ID"),
-                    get_usize(&record, "JTE_ID_BEG"),
-                    get_usize(&record, "JTE_ID_END"),
-                    get_char(&record, "RIJRICHTNG"),
-                    get_char(&record, "STT_NAAM"),
-                    get_char(&record, "WEGBEHNAAM"),
-                    get_char(&record, "HNRSTRLNKS"),
-                    get_char(&record, "HNRSTRRHTS"),
-                    get_usize(&record, "E_HNR_LNKS"),
-                    get_usize(&record, "E_HNR_RHTS"),
-                    get_usize(&record, "L_HNR_LNKS"),
-                    get_usize(&record, "L_HNR_RHTS"),
-                    get_float(&record, "BEGAFSTAND"),
-                    get_float(&record, "ENDAFSTAND"),
-                    get_float(&record, "BEGINKM"),
-                    get_float(&record, "EINDKM")
-                ],
-            )
+        .for_each(|(id, (_, record))| {
+            stmt.execute(params![
+                id,
+                get_usize(&record, "WVK_ID"),
+                get_usize(&record, "JTE_ID_BEG"),
+                get_usize(&record, "JTE_ID_END"),
+                get_text(&record, "RIJRICHTNG"),
+                get_text(&record, "STT_NAAM"),
+                get_text(&record, "WEGBEHNAAM"),
+                get_text(&record, "WEGTYPE"),
+                get_text(&record, "WGTYPE_OMS"),
+                get_text(&record, "HNRSTRLNKS"),
+                get_text(&record, "HNRSTRRHTS"),
+                get_usize(&record, "E_HNR_LNKS"),
+                get_usize(&record, "E_HNR_RHTS"),
+                get_usize(&record, "L_HNR_LNKS"),
+                get_usize(&record, "L_HNR_RHTS"),
+                get_float(&record, "BEGAFSTAND"),
+                get_float(&record, "ENDAFSTAND"),
+                get_float(&record, "BEGINKM"),
+                get_float(&record, "EINDKM")
+            ])
             .expect("Could not insert");
         });
 }
 
-fn get_char(record: &Record, name: &str) -> Option<String> {
+fn get_text(record: &Record, name: &str) -> Option<String> {
     let value = record.get(name).unwrap();
 
     if let FieldValue::Character(x) = value {

@@ -1,16 +1,14 @@
 use crate::{
     camera::MainCamera,
-    geo_coords::{RijkDriehoekCoordinate, WGS84},
-    nwb::{self, NWBNetworkData},
+    nwb::{self},
     ui::PreProcess,
 };
 use bevy::{prelude::*, tasks::ComputeTaskPool};
 use bevy_prototype_lyon::{prelude::*, shapes};
 use bevy_shapefile::{RoadMap, RoadSection, AABB};
-use network::{iterators::F32, DirectedNetworkGraph, EdgeId, NetworkData, NodeId};
+use network::DirectedNetworkGraph;
 use std::{
-    cmp::Reverse,
-    collections::{BinaryHeap, HashMap, HashSet},
+    collections::{HashMap, HashSet},
     path::Path,
 };
 
@@ -43,7 +41,7 @@ pub struct WorldTracker {
 impl Plugin for WorldPlugin {
     fn build(&self, app: &mut bevy::prelude::App) {
         app.insert_resource(WorldTracker::default())
-            .insert_resource(self.config.clone())            
+            .insert_resource(self.config.clone())
             .add_startup_system(init_road_map)
             .add_system(mark_on_changed_preprocess)
             .add_system(colour_system) // Used for drawing the layers
@@ -219,4 +217,3 @@ fn spawn_figure(commands: &mut Commands, id: u32, section: &RoadSection, color: 
         .insert(WorldEntity { id, selected: None })
         .id()
 }
-

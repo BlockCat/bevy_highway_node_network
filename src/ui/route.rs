@@ -1,8 +1,4 @@
-use crate::{
-    geo_coords::{RijkDriehoekCoordinate, WGS84},
-    nwb::NWBNetworkData,
-    world::{WorldEntity, WorldTracker},
-};
+use crate::{nwb::NWBNetworkData, world::WorldEntity};
 use bevy::prelude::*;
 use bevy_egui::egui;
 use bevy_egui::EguiContext;
@@ -11,6 +7,16 @@ use std::{
     cmp::Reverse,
     collections::{BinaryHeap, HashMap, HashSet},
 };
+
+pub struct RouteUIPlugin;
+
+impl Plugin for RouteUIPlugin {
+    fn build(&self, app: &mut App) {
+        app.insert_resource(RouteState::default())
+            .add_system(gui_system)
+            .add_system(route_draw);
+    }
+}
 
 #[derive(Debug, Default)]
 pub struct RouteState {
@@ -90,7 +96,7 @@ where
         ));
     }
 
-    while let Some((Reverse(F32(x)), F32(old_distance), current, parent)) = heap.pop() {
+    while let Some((_, F32(old_distance), current, parent)) = heap.pop() {
         let spare_distance = spare(current, target);
         evaluated += 1;
 

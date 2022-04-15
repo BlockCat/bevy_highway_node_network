@@ -52,7 +52,7 @@ pub fn calculate_layer<D: NetworkData>(
 ) -> DirectedNetworkGraph<IntermediateData> {
     let intermediate = phase_1(size, network);
 
-    // let intermediate = phase_2(intermediate, contraction_factor);
+    let intermediate = phase_2(intermediate, contraction_factor);
 
     DirectedNetworkGraph::from(intermediate)
 }

@@ -10,6 +10,9 @@ INSERT INTO wegvakken
 
     straat_naam,
     beheerder,
+
+    weg_type,
+    weg_type_oms,
     
     huisnummer_structuur_links,
     huisnummer_structuur_rechts,
@@ -32,6 +35,9 @@ INSERT INTO wegvakken
     ?,
     ?,
 
+    ?,
+
+    ?,
     ?,
 
     ?,
