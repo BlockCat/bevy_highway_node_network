@@ -406,6 +406,7 @@ dependencies = [
  "bevy_shapefile",
  "bincode",
  "criterion",
+ "futures-lite",
  "highway",
  "network",
  "rayon",

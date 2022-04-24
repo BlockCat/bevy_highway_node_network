@@ -1,8 +1,12 @@
 use std::{collections::HashMap, path::Path};
 
 use crate::{nwb::NWBNetworkData, world::WorldEntity};
-use bevy::{prelude::*, tasks::ComputeTaskPool};
+use bevy::{
+    prelude::*,
+    tasks::{AsyncComputeTaskPool, ComputeTaskPool, Task},
+};
 use bevy_egui::{egui, EguiContext};
+use futures_lite::future;
 use highway::generation::intermediate_network::IntermediateData;
 use network::{DirectedNetworkGraph, EdgeId, NetworkData};
 
@@ -13,31 +17,38 @@ pub struct LayerState {
     pub contraction_factor: f32,
     pub base_selected: bool,
     pub layers_selected: Vec<bool>,
+    pub processing: bool,
 }
+
+#[derive(Component)]
+pub struct ComputeTask<T>(Task<T>);
 
 pub fn gui_system(
     mut commands: Commands,
-    base_network: Res<DirectedNetworkGraph<NWBNetworkData>>,
-    preprocess: Option<Res<PreProcess>>,
     mut egui_context: ResMut<EguiContext>,
     mut state: ResMut<LayerState>,
+    preprocess: Option<Res<PreProcess>>,
+    base_network: Res<DirectedNetworkGraph<NWBNetworkData>>,
+    pool: Res<AsyncComputeTaskPool>,
 ) {
     egui::Window::new("Preprocessing").show(egui_context.ctx_mut(), |ui| {
         ui.label("Preprocess");
         ui.add(egui::Slider::new(&mut state.preprocess_layers, 1..=20).text("Layers"));
         ui.add(egui::Slider::new(&mut state.neighbourhood_size, 1..=90).text("Neighbourhood size"));
-        if ui.button("Start Preprocess").clicked() {
-            let preprocess = clicked_preprocess(
-                base_network.clone(),
-                state.preprocess_layers,
-                state.neighbourhood_size,
-                state.contraction_factor,
-            );
 
-            state.base_selected = false;
-            state.layers_selected = vec![false; preprocess.layers.len()];
+        if state.processing {
+            ui.add(egui::Spinner::new());
+        } else if ui.button("Start Preprocess").clicked() {
+            let network = base_network.clone();
+            let layer_count = state.preprocess_layers;
+            let neighbourhood_size = state.neighbourhood_size;
+            let contraction_factor = state.contraction_factor;
+            let task = pool.spawn(async move {
+                clicked_preprocess(network, layer_count, neighbourhood_size, contraction_factor)
+            });
+            state.processing = true;
 
-            commands.insert_resource(preprocess);
+            commands.spawn().insert(ComputeTask(task));
         }
 
         if let Some(preprocess) = preprocess {
@@ -65,6 +76,25 @@ where
         crate::write_file(&network, path).expect("Could not write");
 
         network
+    }
+}
+
+pub fn handle_preprocess_task(
+    mut commands: Commands,
+    mut state: ResMut<LayerState>,
+    mut query: Query<(Entity, &mut ComputeTask<PreProcess>)>,
+) {
+    if let Ok((entity, mut task)) = query.get_single_mut() {
+        if let Some(preprocess) = future::block_on(future::poll_once(&mut task.0)) {
+            state.processing = false;
+
+            state.base_selected = false;
+            state.layers_selected = vec![false; preprocess.layers.len()];
+
+            commands.insert_resource(preprocess);
+
+            commands.entity(entity).despawn();
+        }
     }
 }
 

@@ -187,7 +187,15 @@ fn collect_edges<E: EdgeBuilder + Sized>(
     let mut build_edges = map[&node_id]
         .iter()
         .map(|&edge| {
-            let (direction, target) = if edge.source() == node_id {
+            let node_is_source = edge.source() == node_id;
+
+            let (direction, target) = if edge.direction() == EdgeDirection::Both {
+                if node_is_source {
+                    (EdgeDirection::Both, edge.target())
+                } else {
+                    (EdgeDirection::Both, edge.source())
+                }
+            } else if node_is_source {
                 (EdgeDirection::Forward, edge.target())
             } else {
                 debug_assert_eq!(node_id, edge.target());

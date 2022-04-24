@@ -21,6 +21,7 @@ serde = {version = "1.0.136", features = ["derive"]}
 zstd = "0.11"
 
 rayon = "1.5.1"
+futures-lite = "1.12.0"
 
 [dev-dependencies]
 criterion = "0.3"

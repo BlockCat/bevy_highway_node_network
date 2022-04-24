@@ -22,8 +22,10 @@ impl Plugin for HighwayUiPlugin {
                 contraction_factor: 2.0,
                 base_selected: false,
                 layers_selected: vec![],
+                processing: false
             })
             .add_system(layers::colouring_system)
+            .add_system(layers::handle_preprocess_task)
             .add_system(layers::gui_system)
             .add_system(point_system);
     }
