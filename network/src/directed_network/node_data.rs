@@ -30,7 +30,7 @@ impl NetworkData for () {
 
     fn add_node(&mut self, _: NodeId, _: Self::NodeData) {}
 
-    fn add_edge(&mut self, edge: EdgeId, data: Self::EdgeData, road_id: ShortcutState<usize>) {}
+    fn add_edge(&mut self, _: EdgeId, _: Self::EdgeData, _: ShortcutState<usize>) {}
 
     fn with_size(_: usize, _: usize) -> Self {
         ()

@@ -51,6 +51,8 @@ impl RoadMap {
         let roads =
             shapefile::read_as::<P, Polyline, Record>(path).map_err(|x| ShapeError::Shape(x))?;
 
+        let roads = roads.into_par_iter().collect::<Vec<_>>();
+
         println!("Start conversion");
 
         let junctions = roads

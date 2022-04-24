@@ -2,33 +2,17 @@ use self::{
     builder::EdgeDirection,
     iterators::{BackwardDijkstraIterator, EdgeIterator, ForwardDijkstraIterator, F32},
 };
-use crate::{BackwardNeighbourhood, ForwardNeighbourhood};
+use crate::{BackwardNeighbourhood, EdgeId, ForwardNeighbourhood, NodeId};
 pub use node_data::NetworkData;
 use serde::{Deserialize, Serialize};
 use std::{
     cmp::Reverse,
     collections::{BinaryHeap, HashSet},
-    ops::Deref,
 };
 
 pub mod builder;
 pub mod iterators;
 pub mod node_data;
-
-#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
-pub enum ShortcutState<T> {
-    Single(T),
-    Shortcut(Vec<T>),
-}
-
-impl<T> From<ShortcutState<T>> for Vec<T> {
-    fn from(s: ShortcutState<T>) -> Self {
-        match s {
-            ShortcutState::Single(a) => vec![a],
-            ShortcutState::Shortcut(a) => a,
-        }
-    }
-}
 
 #[derive(Debug, PartialEq, Eq, Clone, Serialize, Deserialize)]
 pub struct NetworkNode {
@@ -78,52 +62,6 @@ impl NetworkEdge {
 
     pub fn distance(&self) -> f32 {
         self.edge_weight
-    }
-}
-
-#[derive(Debug, Clone, Copy, Hash, PartialEq, PartialOrd, Eq, Ord, Serialize, Deserialize)]
-pub struct NodeId(pub u32);
-
-impl From<usize> for NodeId {
-    fn from(id: usize) -> Self {
-        Self(id as u32)
-    }
-}
-
-impl Deref for NodeId {
-    type Target = u32;
-
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
-
-impl From<u32> for NodeId {
-    fn from(id: u32) -> Self {
-        Self(id)
-    }
-}
-
-#[derive(Debug, Clone, Copy, Hash, PartialEq, PartialOrd, Eq, Ord, Serialize, Deserialize)]
-pub struct EdgeId(pub u32);
-
-impl From<usize> for EdgeId {
-    fn from(id: usize) -> Self {
-        Self(id as u32)
-    }
-}
-
-impl From<u32> for EdgeId {
-    fn from(id: u32) -> Self {
-        Self(id)
-    }
-}
-
-impl Deref for EdgeId {
-    type Target = u32;
-
-    fn deref(&self) -> &Self::Target {
-        &(self.0)
     }
 }
 
@@ -224,7 +162,6 @@ impl<D: NetworkData> DirectedNetworkGraph<D> {
         BackwardNeighbourhood::from_network(size, self)
     }
 }
-
 
 #[cfg(test)]
 mod tests {

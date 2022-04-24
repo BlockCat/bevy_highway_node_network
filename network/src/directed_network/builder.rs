@@ -170,7 +170,12 @@ fn collect_edges<E: EdgeBuilder + Sized>(
     let mut build_edges = map[&node_id]
         .iter()
         .map(|(target, edge)| {
-            let direction = if map.get(target).and_then(|s| s.get(&node_id)).filter(|x| x.weight() == edge.weight()).is_some() {
+            let direction = if map
+                .get(target)
+                .and_then(|s| s.get(&node_id))
+                .filter(|x| x.weight() == edge.weight())
+                .is_some()
+            {
                 EdgeDirection::Both
             } else {
                 if edge.source() == node_id {
@@ -223,5 +228,4 @@ mod tests {
 
         assert_eq!(n1, n2);
     }
-
 }

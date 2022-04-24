@@ -2,7 +2,7 @@ use super::ComputedState;
 use crate::{iterators::F32, DirectedNetworkGraph, EdgeId, NetworkData, NodeId};
 use std::{
     cmp::Reverse,
-    collections::{BinaryHeap, HashMap, VecDeque},
+    collections::{HashMap, VecDeque},
 };
 
 use super::dag::*;
