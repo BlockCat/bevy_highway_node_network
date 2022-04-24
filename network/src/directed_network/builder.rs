@@ -1,6 +1,6 @@
 use crate::{DirectedNetworkGraph, NetworkData, NetworkEdge, NetworkNode, NodeId, ShortcutState};
 use serde::{Deserialize, Serialize};
-use std::{collections::HashMap, fmt::Debug, hash::Hash};
+use std::{collections::HashMap, fmt::Debug, hash::Hash, ops::Neg};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 pub enum EdgeDirection {
@@ -9,10 +9,30 @@ pub enum EdgeDirection {
     Backward,
 }
 
+impl Neg for EdgeDirection {
+    type Output = EdgeDirection;
+
+    fn neg(self) -> Self::Output {
+        match self {
+            EdgeDirection::Forward => EdgeDirection::Backward,
+            EdgeDirection::Both => EdgeDirection::Both,
+            EdgeDirection::Backward => EdgeDirection::Forward,
+        }
+    }
+}
+
 pub trait NodeBuilder: Hash + PartialEq + Eq {
     type Data: Clone;
 
     fn data(&self) -> Self::Data;
+}
+
+impl NodeBuilder for usize {
+    type Data = ();
+
+    fn data(&self) -> Self::Data {
+        ()
+    }
 }
 
 #[derive(Debug, Hash, PartialEq, Eq, Clone, Copy)]
@@ -122,15 +142,12 @@ impl<V: NodeBuilder, E: EdgeBuilder> DirectedNetworkBuilder<V, E> {
         let mut build_nodes = self.nodes.into_iter().collect::<Vec<_>>();
         build_nodes.sort_by_key(|d| d.1);
 
-        let mut map = HashMap::<NodeId, HashMap<NodeId, &E>>::new();
+        let mut map = HashMap::<NodeId, Vec<&E>>::new();
 
         for (_, edge) in &self.edges {
-            map.entry(edge.source())
-                .or_default()
-                .insert(edge.target(), edge);
-            map.entry(edge.target())
-                .or_default()
-                .insert(edge.source(), edge);
+            let source_to_target = map.entry(edge.source()).or_default().push(edge);
+
+            map.entry(edge.target()).or_default().push(edge);
         }
 
         let mut network_data = D::with_size(build_nodes.len(), self.edges.len() * 2);
@@ -164,28 +181,20 @@ impl<V: NodeBuilder, E: EdgeBuilder> DirectedNetworkBuilder<V, E> {
 }
 
 fn collect_edges<E: EdgeBuilder + Sized>(
-    map: &HashMap<NodeId, HashMap<NodeId, &E>>,
+    map: &HashMap<NodeId, Vec<&E>>,
     node_id: NodeId,
 ) -> Vec<(NodeId, EdgeDirection, NodeId, E)> {
     let mut build_edges = map[&node_id]
         .iter()
-        .map(|(target, edge)| {
-            let direction = if map
-                .get(target)
-                .and_then(|s| s.get(&node_id))
-                .filter(|x| x.weight() == edge.weight())
-                .is_some()
-            {
-                EdgeDirection::Both
+        .map(|&edge| {
+            let (direction, target) = if edge.source() == node_id {
+                (EdgeDirection::Forward, edge.target())
             } else {
-                if edge.source() == node_id {
-                    EdgeDirection::Forward
-                } else {
-                    EdgeDirection::Backward
-                }
+                debug_assert_eq!(node_id, edge.target());
+                (EdgeDirection::Backward, edge.source())
             };
 
-            (node_id, direction, *target, (*edge).clone())
+            (node_id, direction, target, (*edge).clone())
         })
         .collect::<Vec<_>>();
     build_edges.sort_by_key(|x| (x.0, x.1, x.2));
@@ -194,29 +203,28 @@ fn collect_edges<E: EdgeBuilder + Sized>(
 
 #[cfg(test)]
 mod tests {
-    use crate::{
-        tests::{TestEdge, TestNode},
-        DirectedNetworkGraph,
-    };
+    use crate::DirectedNetworkGraph;
+
+    use super::DefaultEdgeBuilder;
 
     fn create_network() -> DirectedNetworkGraph<()> {
         let mut builder = crate::builder::DirectedNetworkBuilder::new();
 
-        let na = builder.add_node(TestNode(0));
-        let nb = builder.add_node(TestNode(1));
-        let nc = builder.add_node(TestNode(2));
-        let nd = builder.add_node(TestNode(3));
-        let ne = builder.add_node(TestNode(4));
-        let nf = builder.add_node(TestNode(5));
+        let na = builder.add_node(0);
+        let nb = builder.add_node(1);
+        let nc = builder.add_node(2);
+        let nd = builder.add_node(3);
+        let ne = builder.add_node(4);
+        let nf = builder.add_node(5);
 
-        builder.add_edge(TestEdge::forward(na, nb, 10.0));
-        builder.add_edge(TestEdge::forward(nb, nd, 12.0));
-        builder.add_edge(TestEdge::forward(nd, ne, 2.0));
-        builder.add_edge(TestEdge::forward(na, nc, 15.0));
-        builder.add_edge(TestEdge::forward(nc, ne, 10.0));
-        builder.add_edge(TestEdge::forward(nf, ne, 5.0));
-        builder.add_edge(TestEdge::forward(nb, nf, 15.0));
-        builder.add_edge(TestEdge::forward(nd, nf, 1.0));
+        builder.add_edge(DefaultEdgeBuilder::forward(na, nb, 0, 10.0));
+        builder.add_edge(DefaultEdgeBuilder::forward(nb, nd, 0, 12.0));
+        builder.add_edge(DefaultEdgeBuilder::forward(nd, ne, 0, 2.0));
+        builder.add_edge(DefaultEdgeBuilder::forward(na, nc, 0, 15.0));
+        builder.add_edge(DefaultEdgeBuilder::forward(nc, ne, 0, 10.0));
+        builder.add_edge(DefaultEdgeBuilder::forward(nf, ne, 0, 5.0));
+        builder.add_edge(DefaultEdgeBuilder::forward(nb, nf, 0, 15.0));
+        builder.add_edge(DefaultEdgeBuilder::forward(nd, nf, 0, 1.0));
 
         builder.build()
     }

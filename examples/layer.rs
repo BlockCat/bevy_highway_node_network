@@ -1,4 +1,5 @@
 use bevy_dutch_road_highway_node_network::{nwb::NWBNetworkData, read_file, write_file};
+use highway::generation::calculate_layer;
 use network::{DirectedNetworkGraph, NetworkData};
 
 fn main() {
@@ -11,7 +12,7 @@ fn main() {
         network.edges().len()
     );
 
-    let mut layers = vec![network::calculate_layer(30, &network, 2.0)];
+    let mut layers = vec![calculate_layer(30, &network, 2.0)];
 
     if let Some(x) = layers.first() {
         write_file(x, format!("data/0.graph")).expect("Could not write");
@@ -25,7 +26,7 @@ fn main() {
             prev_layer.nodes().len(),
             prev_layer.edges().len()
         );
-        let next = network::calculate_layer(30, prev_layer, 3.0);
+        let next = calculate_layer(30, prev_layer, 3.0);
 
         write_file(&next, format!("data/{}.graph", i)).expect("Could not write");
         layers.push(next);

@@ -3,7 +3,8 @@ use std::{collections::HashMap, path::Path};
 use crate::{nwb::NWBNetworkData, world::WorldEntity};
 use bevy::{prelude::*, tasks::ComputeTaskPool};
 use bevy_egui::{egui, EguiContext};
-use network::{intermediate_network::IntermediateData, DirectedNetworkGraph, EdgeId, NetworkData};
+use highway::generation::intermediate_network::IntermediateData;
+use network::{DirectedNetworkGraph, EdgeId, NetworkData};
 
 #[derive(Debug, Default)]
 pub struct LayerState {
@@ -78,7 +79,7 @@ fn clicked_preprocess(
     let mut layers = Vec::new();
 
     layers.push(load_or_calculate("data/layer_0.graph", || {
-        network::calculate_layer(neighbourhood, &base, contraction_factor)
+        highway::generation::calculate_layer(neighbourhood, &base, contraction_factor)
     }));
 
     println!(
@@ -92,7 +93,7 @@ fn clicked_preprocess(
         let network = layers.last().unwrap();
         let path = format!("data/layer_{}.graph", i);
         let next_layer = load_or_calculate(path, || {
-            network::calculate_layer(size, network, contraction_factor)
+            highway::generation::calculate_layer(size, network, contraction_factor)
         });
 
         println!(

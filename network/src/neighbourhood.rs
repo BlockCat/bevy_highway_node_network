@@ -94,25 +94,21 @@ fn find_backward_neighbourhood_radius<D: NetworkData>(
 #[cfg(test)]
 mod tests {
 
-    use crate::{
-        create_network,
-        tests::{TestEdge, TestNode},
-        ForwardNeighbourhood,
-    };
+    use crate::{create_network, ForwardNeighbourhood};
 
     #[test]
     fn forward_neighbourhood_test() {
         // https://www.baeldung.com/wp-content/uploads/2017/01/initial-graph.png
         let network = create_network!(
             0..5,
-            0 => 1; 10.0,
-            0 => 2; 15.0,
-            1 => 3; 5.0,
-            1 => 5; 15.0,
-            2 => 4; 10.0,
-            3 => 4; 2.0,
-            3 => 5; 1.0,
-            5 => 4; 5.0
+            0 => 1; 10.0, // A => B
+            0 => 2; 15.0, // A => C
+            1 => 3; 5.0, // B => D
+            1 => 5; 15.0, // B => F
+            2 => 4; 10.0, // C => E
+            3 => 4; 2.0, // D => E
+            3 => 5; 1.0, // D => F
+            5 => 4; 5.0 // F => E
         );
 
         let forward = ForwardNeighbourhood::from_network(3, &network);

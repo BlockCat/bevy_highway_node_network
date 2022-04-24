@@ -45,7 +45,7 @@ pub struct HighwayNetwork {
  * - Node starts at edge_index
  * - Edge
  * - Is edge in layer
- * - Is edge bypassed in layer...
+ * - Is edge bypassed or is a shortcut (starting from which layer)
  * - weight
  */
 

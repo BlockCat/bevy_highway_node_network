@@ -1,5 +1,6 @@
 use bevy_dutch_road_highway_node_network::{nwb::NWBNetworkData, read_file};
 use criterion::{criterion_group, criterion_main, Criterion};
+use highway::generation::calculate_layer;
 use network::DirectedNetworkGraph;
 
 fn bench(b: &mut Criterion) {
@@ -10,7 +11,7 @@ fn bench(b: &mut Criterion) {
 
     group.sample_size(10);
     group.bench_function("network::phase_1", |b| {
-        b.iter(|| network::calculate_layer(30, &network, 2.0));
+        b.iter(|| calculate_layer(30, &network, 2.0));
     });
     group.finish();
 }

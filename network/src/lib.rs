@@ -7,13 +7,13 @@ pub use directed_network::*;
 pub use neighbourhood::*;
 
 pub mod directed_network;
-pub mod highway;
+// pub mod highway;
 pub mod highway_network;
 pub mod neighbourhood;
 
-pub use highway::intermediate_network;
+// pub use highway::intermediate_network;
 
-pub use highway::calculate_layer;
+// pub use highway::calculate_layer;
 use serde::Deserialize;
 use serde::Serialize;
 
@@ -80,3 +80,28 @@ impl<T> From<ShortcutState<T>> for Vec<T> {
 
 #[cfg(test)]
 pub(crate) mod tests;
+
+#[macro_export]
+macro_rules! create_network {
+    ($s:literal..$e:literal, $($a:literal => $b:literal; $c: expr),+) => {
+    {
+        use $crate::builder::DefaultEdgeBuilder;
+        use $crate::builder::DirectedNetworkBuilder;
+        let mut builder = DirectedNetworkBuilder::<usize, DefaultEdgeBuilder>::new();
+
+        for x in $s..=$e {
+            builder.add_node(x);
+        }
+
+        $({
+            let source = builder.add_node($a);
+            let target = builder.add_node($b);
+
+            builder.add_edge(DefaultEdgeBuilder::forward(source, target, 0, $c));
+
+        })+
+
+        builder.build::<()>()
+    }
+    };
+}
