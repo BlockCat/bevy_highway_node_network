@@ -135,7 +135,7 @@ fn load_junctions(roads: &Vec<(GenericPolyline<Point>, Record)>) -> HashMap<Junc
 fn load_road_sections(
     roads: Vec<(GenericPolyline<Point>, Record)>,
 ) -> HashMap<RoadId, RoadSection> {
-    let roads = roads
+    roads
         .into_par_iter()
         .enumerate()
         .map(|(id, (line, _))| {
@@ -157,6 +157,5 @@ fn load_road_sections(
 
             (id, RoadSection { id, points, aabb })
         })
-        .collect::<HashMap<_, _>>();
-    roads
+        .collect::<HashMap<_, _>>()
 }

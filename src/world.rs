@@ -3,16 +3,12 @@ use crate::{
     nwb::{self},
     ui::{DirectedNetworkGraphContainer, PreProcess},
 };
-use bevy::{prelude::*, tasks::AsyncComputeTaskPool};
-use bevy_polyline::{
-    prelude::{Polyline, PolylineBundle, PolylineMaterial},
-    PolylinePlugin,
-};
+use bevy::prelude::*;
+use bevy_polyline::prelude::{Polyline, PolylineBundle, PolylineMaterial};
 use bevy_shapefile::{RoadId, RoadMap, RoadSection, AABB};
 use network::DirectedNetworkGraph;
 use std::{
     collections::{HashMap, HashSet},
-    ops::Sub,
     path::Path,
 };
 
@@ -91,7 +87,7 @@ fn init_materials(
     mut polyline_materials: ResMut<Assets<PolylineMaterial>>,
 ) {
     let normal_material = polyline_materials.add(PolylineMaterial {
-        width: 1.0,
+        width: 0.2,
         color: config.normal_colour,
         perspective: true,
         ..Default::default()
@@ -296,16 +292,17 @@ fn spawn_figure(
     polylines: &mut Assets<Polyline>,
     materials: &LoadedMaterials,
 ) -> Entity {
+    let polyline = polylines.add(Polyline {
+        vertices: section
+            .points
+            .iter()
+            .map(|c| Vec3::new(c.x, c.y, 0.0))
+            .collect(),
+        ..Default::default()
+    });
     commands
         .spawn(PolylineBundle {
-            polyline: polylines.add(Polyline {
-                vertices: section
-                    .points
-                    .iter()
-                    .map(|c| Vec3::new(c.x, c.y, 0.0))
-                    .collect(),
-                ..Default::default()
-            }),
+            polyline,
             material: materials.normal_material.clone_weak(),
             ..Default::default()
         })
