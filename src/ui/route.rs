@@ -1,3 +1,4 @@
+use crate::world::WorldEntitySelectionType;
 use crate::{nwb::NWBNetworkData, world::WorldEntity};
 use bevy::prelude::*;
 use bevy_egui::egui;
@@ -7,6 +8,8 @@ use std::{
     cmp::Reverse,
     collections::{BinaryHeap, HashMap, HashSet},
 };
+
+use super::DirectedNetworkGraphContainer;
 
 pub struct RouteUIPlugin;
 
@@ -18,7 +21,7 @@ impl Plugin for RouteUIPlugin {
     }
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Resource)]
 pub struct RouteState {
     find_nodes: bool,
     node_1: Option<NodeId>,
@@ -53,7 +56,7 @@ pub fn gui_system(mut egui_context: ResMut<EguiContext>, mut state: ResMut<Route
 fn route_draw(
     route_state: Res<RouteState>,
     mut query: Query<&mut WorldEntity>,
-    network: Res<DirectedNetworkGraph<NWBNetworkData>>,
+    network: Res<DirectedNetworkGraphContainer>,
 ) {
     if let Some(loaded) = &route_state.edges {
         let l = loaded
@@ -63,7 +66,7 @@ fn route_draw(
 
         query.for_each_mut(|mut a| {
             if l.contains(&a.id) {
-                a.selected = Some(Color::ALICE_BLUE);
+                a.selected = WorldEntitySelectionType::Route;// Some(Color::ALICE_BLUE);
             }
         });
     }

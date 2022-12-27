@@ -9,7 +9,7 @@ pub struct CameraPlugin {
     pub config: CameraConfig,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Resource, Clone)]
 pub struct CameraConfig {
     pub zoom_in: KeyCode,
     pub zoom_out: KeyCode,
@@ -36,13 +36,18 @@ fn load_camera(mut commands: Commands) {
         longitude: 5.1134345,
     };
     let utrecht = RijkDriehoekCoordinate::from(utrecht);
-    let mut utrecht = Vec3::from(utrecht);
-    utrecht.z = 10.0;
+    let utrecht = Vec2::from(utrecht);
 
     commands
-        .spawn_bundle(OrthographicCameraBundle {
-            transform: Transform::from_translation(utrecht),
-            ..OrthographicCameraBundle::new_2d()
+        .spawn(Camera3dBundle {
+            transform: Transform::from_translation(utrecht.extend(10.0))
+                .looking_at(utrecht.extend(0.0), Vec3::Y),
+            projection: Projection::Orthographic(Default::default()),
+            camera: Camera {
+                hdr: true,
+                ..default()
+            },
+            ..default()
         })
         .insert(MainCamera);
 }
@@ -50,7 +55,7 @@ fn load_camera(mut commands: Commands) {
 fn camera_system_zoom(
     config: Res<CameraConfig>,
     keys: Res<Input<KeyCode>>,
-    mut q_camera: Query<&mut OrthographicProjection, With<MainCamera>>,
+    mut q_camera: Query<&mut Projection, With<MainCamera>>,
 ) {
     let mut zoomed = false;
     let mut factor = 1.0;
@@ -66,14 +71,20 @@ fn camera_system_zoom(
 
     if zoomed {
         let mut projection = q_camera.single_mut();
-        projection.scale *= factor;
+        match projection.as_mut() {
+            Projection::Perspective(_) => todo!(),
+            Projection::Orthographic(projection) => {
+                projection.scale *= factor;
+                println!("Zoomed: {}", projection.scale);
+            }
+        }
     }
 }
 
 fn camera_system_move(
     config: Res<CameraConfig>,
     keys: Res<Input<KeyCode>>,
-    mut q_camera: Query<(&OrthographicProjection, &mut Transform), With<MainCamera>>,
+    mut q_camera: Query<(&Projection, &mut Transform), With<MainCamera>>,
 ) {
     let mut translation = Vec3::new(0.0, 0.0, 0.0);
     let mut moved = false;
@@ -97,7 +108,13 @@ fn camera_system_move(
 
     if moved {
         let (projection, mut transform) = q_camera.single_mut();
-        transform.translation += translation * projection.scale;
+
+        match projection {
+            Projection::Orthographic(projection) => {
+                transform.translation += translation * projection.scale;
+            }
+            Projection::Perspective(_) => todo!(),
+        }
 
         println!("Moved: {:?}", transform.translation);
     }

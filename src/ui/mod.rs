@@ -1,10 +1,16 @@
-use crate::{nwb::NWBNetworkData, world::WorldEntity};
+use crate::{
+    nwb::NWBNetworkData,
+    world::{WorldEntity, WorldEntitySelectionType},
+};
 use bevy::prelude::*;
 use bevy_egui::EguiPlugin;
 use bevy_shapefile::RoadMap;
 pub use layers::PreProcess;
 use network::{DirectedNetworkGraph, NodeId};
-use std::collections::HashSet;
+use std::{
+    collections::HashSet,
+    ops::{Deref, DerefMut},
+};
 
 use self::layers::LayerState;
 
@@ -12,6 +18,22 @@ mod layers;
 mod route;
 
 pub struct HighwayUiPlugin;
+
+#[derive(Resource, Debug)]
+pub struct DirectedNetworkGraphContainer(pub DirectedNetworkGraph<NWBNetworkData>);
+
+impl Deref for DirectedNetworkGraphContainer {
+    type Target = DirectedNetworkGraph<NWBNetworkData>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+impl DerefMut for DirectedNetworkGraphContainer {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
+    }
+}
 
 impl Plugin for HighwayUiPlugin {
     fn build(&self, app: &mut bevy::prelude::App) {
@@ -33,7 +55,7 @@ impl Plugin for HighwayUiPlugin {
 
 fn point_system(
     windows: Res<Windows>,
-    network: Res<DirectedNetworkGraph<NWBNetworkData>>,
+    network: Res<DirectedNetworkGraphContainer>,
     road_map: Res<RoadMap>,
     camera_q: Query<(&GlobalTransform, &Camera)>,
     mut query: Query<&mut WorldEntity>,
@@ -68,9 +90,9 @@ fn point_system(
 
                 query.for_each_mut(|mut we| {
                     match (out_edges.contains(&we.id), in_edges.contains(&we.id)) {
-                        (true, true) => we.selected = Some(Color::GREEN),
-                        (true, false) => we.selected = Some(Color::RED),
-                        (false, true) => we.selected = Some(Color::YELLOW),
+                        (true, true) => we.selected = WorldEntitySelectionType::BiDirection,
+                        (true, false) => we.selected = WorldEntitySelectionType::Incoming,
+                        (false, true) => we.selected = WorldEntitySelectionType::Outgoing,
                         _ => {}
                     }
                 });

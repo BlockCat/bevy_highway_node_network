@@ -1,14 +1,18 @@
 use crate::{
     camera::MainCamera,
     nwb::{self},
-    ui::PreProcess,
+    ui::{DirectedNetworkGraphContainer, PreProcess},
 };
-use bevy::{prelude::*, tasks::ComputeTaskPool};
-use bevy_prototype_lyon::{prelude::*, shapes};
+use bevy::{prelude::*, tasks::AsyncComputeTaskPool};
+use bevy_polyline::{
+    prelude::{Polyline, PolylineBundle, PolylineMaterial},
+    PolylinePlugin,
+};
 use bevy_shapefile::{RoadId, RoadMap, RoadSection, AABB};
 use network::DirectedNetworkGraph;
 use std::{
     collections::{HashMap, HashSet},
+    ops::Sub,
     path::Path,
 };
 
@@ -16,7 +20,17 @@ pub struct WorldPlugin {
     pub config: WorldConfig,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Resource)]
+pub struct LoadedMaterials {
+    normal_material: Handle<PolylineMaterial>,
+    selected_material: Handle<PolylineMaterial>,
+
+    outgoing_material: Handle<PolylineMaterial>,
+    incoming_material: Handle<PolylineMaterial>,
+    route_material: Handle<PolylineMaterial>,
+}
+
+#[derive(Debug, Clone, Resource)]
 pub struct WorldConfig {
     pub database_path: String,
     pub road_map_path: String,
@@ -30,18 +44,38 @@ pub struct WorldConfig {
 #[derive(Debug, Clone, Component)]
 pub struct WorldEntity {
     pub id: RoadId,
-    pub selected: Option<Color>,
+    pub selected: WorldEntitySelectionType,
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug, Clone)]
+pub enum WorldEntitySelectionType {
+    NotSelected,
+    BaseSelected,
+    BiDirection,
+    Outgoing,
+    Incoming,
+    Route,
+}
+
+#[derive(Debug, Default, Resource)]
 pub struct WorldTracker {
     pub map: HashMap<RoadId, Entity>,
+}
+
+impl WorldTracker {
+    pub fn track(&mut self, id: RoadId, entity: Entity) {
+        self.map.insert(id, entity);
+    }
+    pub fn remove(&mut self, id: RoadId) {
+        self.map.remove(&id);
+    }
 }
 
 impl Plugin for WorldPlugin {
     fn build(&self, app: &mut bevy::prelude::App) {
         app.insert_resource(WorldTracker::default())
             .insert_resource(self.config.clone())
+            .add_startup_system(init_materials)
             .add_startup_system(init_road_map)
             .add_system(mark_on_changed_preprocess)
             .add_system(colour_system) // Used for drawing the layers
@@ -49,6 +83,50 @@ impl Plugin for WorldPlugin {
             // .add_system(help)
             .add_system(visible_entities);
     }
+}
+
+fn init_materials(
+    config: Res<WorldConfig>,
+    mut commands: Commands,
+    mut polyline_materials: ResMut<Assets<PolylineMaterial>>,
+) {
+    let normal_material = polyline_materials.add(PolylineMaterial {
+        width: 1.0,
+        color: config.normal_colour,
+        perspective: true,
+        ..Default::default()
+    });
+    let selected_material = polyline_materials.add(PolylineMaterial {
+        width: 3.0,
+        color: config.selected_colour,
+        ..Default::default()
+    });
+
+    let incoming_material = polyline_materials.add(PolylineMaterial {
+        width: 3.0,
+        color: Color::RED,
+
+        ..Default::default()
+    });
+
+    let outgoing_material = polyline_materials.add(PolylineMaterial {
+        width: 3.0,
+        color: Color::YELLOW,
+        ..Default::default()
+    });
+
+    let route_material = polyline_materials.add(PolylineMaterial {
+        width: 2.0,
+        color: Color::ALICE_BLUE,
+        ..Default::default()
+    });
+    commands.insert_resource(LoadedMaterials {
+        normal_material,
+        selected_material,
+        incoming_material,
+        outgoing_material,
+        route_material,
+    });
 }
 
 fn init_road_map(config: Res<WorldConfig>, mut commands: Commands) {
@@ -79,7 +157,7 @@ fn init_road_map(config: Res<WorldConfig>, mut commands: Commands) {
     // println!("Collected phase1 edges: {}", next_level_edges.len());
 
     commands.insert_resource(road_map);
-    commands.insert_resource(network);
+    commands.insert_resource(DirectedNetworkGraphContainer(network));
 
     // commands.insert_resource(next_level_edges);
 }
@@ -132,14 +210,15 @@ fn mark_on_changed_preprocess(
 
 fn visible_entities(
     mut commands: Commands,
-    config: Res<WorldConfig>,
+    materials: Res<LoadedMaterials>,
     road_map: Res<RoadMap>,
     mut tracker: ResMut<WorldTracker>,
+    mut polylines: ResMut<Assets<Polyline>>,
     q_camera: Query<
         (&Camera, &GlobalTransform),
         (
             With<MainCamera>,
-            Or<(Changed<Transform>, Changed<OrthographicProjection>)>,
+            Or<(Changed<Transform>, Changed<Projection>)>,
         ),
     >,
 ) {
@@ -152,54 +231,61 @@ fn visible_entities(
             .locate_in_envelope_intersecting(&AABB::from_corners([min.x, min.y], [max.x, max.y]))
             .map(|x| x.id)
             .collect::<HashSet<_>>();
-
         let tracked = tracker.map.keys().cloned().collect::<HashSet<_>>();
 
-        let added = visible.difference(&tracked).collect::<Vec<_>>();
-        let removed = tracked.difference(&visible).collect::<Vec<_>>();
+        let added = visible.difference(&tracked).cloned().collect::<Vec<_>>();
+        let removed = tracked.difference(&visible).cloned().collect::<Vec<_>>();
 
         println!(
             "Tracked: {}, Added: {}, Removed: {}, Unchanged: {}",
             tracked.len(),
             added.len(),
             removed.len(),
-            tracked.len() - removed.len()
+            tracked.len() - removed.len(),
         );
 
         for id in removed {
-            let entity = tracker.map.get(id).unwrap();
+            let entity = tracker.map.get(&id).unwrap();
             commands.entity(*entity).despawn();
 
-            tracker.map.remove(id);
+            tracker.remove(id);
         }
 
         for id in added {
-            let section = road_map.roads.get(id).unwrap();
-            let colour = config.normal_colour;
-            let entity = spawn_figure(&mut commands, *id, section, colour);
-            tracker.map.insert(*id, entity);
+            let section = road_map.roads.get(&id).unwrap();
+            let entity = spawn_figure(&mut commands, id, section, &mut polylines, &materials);
+
+            tracker.track(id, entity);
         }
     }
 }
 
 fn colour_system(
-    pool: Res<ComputeTaskPool>,
-    config: Res<WorldConfig>,
-    mut query: Query<(&mut WorldEntity, &mut DrawMode)>,
+    loaded_materials: Res<LoadedMaterials>,
+    mut query: Query<(&mut WorldEntity, &mut Handle<PolylineMaterial>)>,
 ) {
-    query.par_for_each_mut(&pool, 32, |(mut we, mut mode)| {
-        if let Some(colour) = we.selected {
-            *mode = DrawMode::Stroke(StrokeMode::new(colour, 4.0));
-        } else {
-            *mode = DrawMode::Stroke(StrokeMode::new(config.normal_colour, 2.0));
-        }
-        we.selected = None;
+    query.par_for_each_mut(32, |(mut we, mut mode)| {
+        let material = match we.selected {
+            WorldEntitySelectionType::NotSelected => loaded_materials.normal_material.clone_weak(),
+            WorldEntitySelectionType::BaseSelected => {
+                loaded_materials.selected_material.clone_weak()
+            }
+            WorldEntitySelectionType::BiDirection => {
+                loaded_materials.selected_material.clone_weak()
+            }
+            WorldEntitySelectionType::Outgoing => loaded_materials.outgoing_material.clone_weak(),
+            WorldEntitySelectionType::Incoming => loaded_materials.incoming_material.clone_weak(),
+            WorldEntitySelectionType::Route => loaded_materials.route_material.clone_weak(),
+        };
+        *mode = material;
+        we.selected = WorldEntitySelectionType::NotSelected;
     });
 }
 
 pub fn convert(pos: Vec2, transform: &GlobalTransform, camera: &Camera) -> Vec2 {
-    (transform.compute_matrix() * camera.projection_matrix.inverse())
-        .project_point3(pos.extend(-1.0))
+    camera
+        .ndc_to_world(transform, pos.extend(0.0))
+        .unwrap()
         .truncate()
 }
 
@@ -207,18 +293,25 @@ fn spawn_figure(
     commands: &mut Commands,
     id: RoadId,
     section: &RoadSection,
-    color: Color,
+    polylines: &mut Assets<Polyline>,
+    materials: &LoadedMaterials,
 ) -> Entity {
-    let shape = shapes::Polygon {
-        closed: false,
-        points: section.points.clone(),
-    };
     commands
-        .spawn_bundle(GeometryBuilder::build_as(
-            &shape,
-            DrawMode::Stroke(StrokeMode::new(color, 2.0)),
-            Transform::default(),
-        ))
-        .insert(WorldEntity { id, selected: None })
+        .spawn(PolylineBundle {
+            polyline: polylines.add(Polyline {
+                vertices: section
+                    .points
+                    .iter()
+                    .map(|c| Vec3::new(c.x, c.y, 0.0))
+                    .collect(),
+                ..Default::default()
+            }),
+            material: materials.normal_material.clone_weak(),
+            ..Default::default()
+        })
+        .insert(WorldEntity {
+            id,
+            selected: WorldEntitySelectionType::NotSelected,
+        })
         .id()
 }

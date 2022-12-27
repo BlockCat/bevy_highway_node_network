@@ -1,9 +1,12 @@
 use std::{collections::HashMap, path::Path};
 
-use crate::{nwb::NWBNetworkData, world::WorldEntity};
+use crate::{
+    nwb::NWBNetworkData,
+    world::{WorldEntity, WorldEntitySelectionType},
+};
 use bevy::{
     prelude::*,
-    tasks::{AsyncComputeTaskPool, ComputeTaskPool, Task},
+    tasks::{AsyncComputeTaskPool, Task},
 };
 use bevy_egui::{egui, EguiContext};
 use bevy_shapefile::RoadId;
@@ -11,7 +14,9 @@ use futures_lite::future;
 use highway::generation::intermediate_network::IntermediateData;
 use network::{DirectedNetworkGraph, EdgeId, NetworkData};
 
-#[derive(Debug, Default)]
+use super::DirectedNetworkGraphContainer;
+
+#[derive(Debug, Default, Resource)]
 pub struct LayerState {
     pub preprocess_layers: usize,
     pub neighbourhood_size: usize,
@@ -29,8 +34,7 @@ pub fn gui_system(
     mut egui_context: ResMut<EguiContext>,
     mut state: ResMut<LayerState>,
     preprocess: Option<Res<PreProcess>>,
-    base_network: Res<DirectedNetworkGraph<NWBNetworkData>>,
-    pool: Res<AsyncComputeTaskPool>,
+    base_network: Res<DirectedNetworkGraphContainer>,
 ) {
     egui::Window::new("Preprocessing").show(egui_context.ctx_mut(), |ui| {
         ui.label("Preprocess");
@@ -44,12 +48,13 @@ pub fn gui_system(
             let layer_count = state.preprocess_layers;
             let neighbourhood_size = state.neighbourhood_size;
             let contraction_factor = state.contraction_factor;
-            let task = pool.spawn(async move {
+
+            let task = AsyncComputeTaskPool::get().spawn(async move {
                 clicked_preprocess(network, layer_count, neighbourhood_size, contraction_factor)
             });
             state.processing = true;
 
-            commands.spawn().insert(ComputeTask(task));
+            commands.spawn(ComputeTask(task));
         }
 
         if let Some(preprocess) = preprocess {
@@ -143,18 +148,17 @@ fn clicked_preprocess(
 }
 
 pub fn colouring_system(
-    pool: Res<ComputeTaskPool>,
     ui_state: Res<LayerState>,
     preprocess: Option<Res<PreProcess>>,
     mut query: Query<&mut WorldEntity>,
 ) {
     if let Some(preprocess) = preprocess {
         if ui_state.base_selected {
-            query.par_for_each_mut(&pool, 32, |mut we| {
-                we.selected = Some(Color::GREEN);
+            query.par_for_each_mut(32, |mut we| {
+                we.selected = WorldEntitySelectionType::BaseSelected;
             });
         } else {
-            query.par_for_each_mut(&pool, 32, |mut we| {
+            query.par_for_each_mut(32, |mut we| {
                 for (i, sel) in ui_state.layers_selected.iter().enumerate() {
                     if *sel {
                         if preprocess
@@ -163,7 +167,7 @@ pub fn colouring_system(
                             .map(|&x| x > i as u8)
                             .unwrap_or_default()
                         {
-                            we.selected = Some(Color::GREEN);
+                            we.selected = WorldEntitySelectionType::BaseSelected;
                         }
                     }
                 }
@@ -172,6 +176,7 @@ pub fn colouring_system(
     }
 }
 
+#[derive(Resource)]
 pub struct PreProcess {
     pub base: DirectedNetworkGraph<NWBNetworkData>,
     pub layers: Vec<DirectedNetworkGraph<IntermediateData>>,

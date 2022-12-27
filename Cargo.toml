@@ -6,9 +6,10 @@ version = "0.1.0"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-bevy = {version = "0.7.0", features = ["dynamic"]}
-bevy_egui = {version = "0.13"}
-bevy_prototype_lyon = "0.5.0"
+bevy = {version = "0.9", features = ["dynamic"]}
+bevy_egui = {version = "0.18"}
+# bevy_prototype_lyon = "0.7"
+bevy_polyline = "0.4.0"
 bevy_shapefile = {path = "./bevy_shapefile"}
 highway = {path = "./highway"}
 
@@ -20,8 +21,8 @@ rusqlite = {version = "0.28.0", features = ["bundled"]}
 serde = {version = "1.0.136", features = ["derive"]}
 zstd = "0.12.1+zstd.1.5.2"
 
-rayon = "1.5.1"
 futures-lite = "1.12.0"
+rayon = "1.5.1"
 
 [dev-dependencies]
 criterion = "0.4.0"

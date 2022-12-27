@@ -4,6 +4,7 @@ use crate::{
 };
 use bevy::{
     math::{Vec2, Vec3},
+    prelude::Resource,
     render::primitives::Aabb,
 };
 use rayon::prelude::*;
@@ -19,7 +20,7 @@ use std::{collections::HashMap, fs::File, path::Path};
 /// Load shapefile.
 /// This shapefile is used vor visualization of road data.
 /// It loads all the road sections, and puts it in spatial data structures.
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Resource)]
 pub struct RoadMap {
     pub roads: HashMap<RoadId, RoadSection>,
     pub junction_spatial: rstar::RTree<JunctionSpatialIndex, Params>,

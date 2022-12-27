@@ -3,13 +3,17 @@
 #![feature(test)]
 extern crate test;
 
-use bevy::{diagnostic::{FrameTimeDiagnosticsPlugin, LogDiagnosticsPlugin}, prelude::*, DefaultPlugins};
+use bevy::{
+    diagnostic::{FrameTimeDiagnosticsPlugin, LogDiagnosticsPlugin},
+    prelude::*,
+    DefaultPlugins,
+};
 use bevy_dutch_road_highway_node_network::{
     camera::{CameraConfig, CameraPlugin},
     ui::HighwayUiPlugin,
     world::{WorldConfig, WorldPlugin},
 };
-use bevy_prototype_lyon::plugin::ShapePlugin;
+use bevy_polyline::PolylinePlugin;
 
 fn main() {
     App::new()
@@ -17,9 +21,9 @@ fn main() {
         .insert_resource(Msaa { samples: 4 })
         .add_plugins(DefaultPlugins)
         .add_plugin(HighwayUiPlugin)
-        .add_plugin(ShapePlugin)
-        .add_plugin(LogDiagnosticsPlugin::default())
-        .add_plugin(FrameTimeDiagnosticsPlugin::default())
+        .add_plugin(PolylinePlugin)
+        // .add_plugin(LogDiagnosticsPlugin::default())
+        // .add_plugin(FrameTimeDiagnosticsPlugin::default())
         .add_plugin(WorldPlugin {
             config: WorldConfig {
                 database_path: "data/database.db".into(),
