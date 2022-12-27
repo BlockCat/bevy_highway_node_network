@@ -27,7 +27,7 @@ pub(crate) fn core_network_with_patch(
             .map(|x| x.len() as f32)
             .unwrap_or_default();
 
-        let short_cuts = (out_edges * in_edges) as f32;
+        let short_cuts = out_edges * in_edges;
         let contraction = (out_edges + in_edges) * contraction_factor;
 
         if short_cuts < contraction {

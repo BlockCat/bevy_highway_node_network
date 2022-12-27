@@ -35,7 +35,7 @@ impl NodeBuilder for usize {
         *self as u32
     }
     fn data(&self) -> Self::Data {
-        ()
+        
     }
 }
 
@@ -50,7 +50,7 @@ impl NodeBuilder for DefaultNodeBuilder {
     }
 
     fn data(&self) -> Self::Data {
-        ()
+        
     }
 }
 
@@ -71,7 +71,7 @@ impl EdgeBuilder for DefaultEdgeBuilder {
     type Data = ();
 
     fn data(&self) -> Self::Data {
-        ()
+        
     }
 
     fn source(&self) -> NodeId {

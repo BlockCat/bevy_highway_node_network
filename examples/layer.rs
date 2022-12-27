@@ -15,7 +15,7 @@ fn main() {
     let mut layers = vec![calculate_layer(30, &network, 2.0)];
 
     if let Some(x) = layers.first() {
-        write_file(x, format!("data/0.graph")).expect("Could not write");
+        write_file(x, "data/0.graph".to_string()).expect("Could not write");
     }
 
     for i in 1..7 {
@@ -28,7 +28,7 @@ fn main() {
         );
         let next = calculate_layer(30, prev_layer, 3.0);
 
-        write_file(&next, format!("data/{}.graph", i)).expect("Could not write");
+        write_file(&next, format!("data/{i}.graph")).expect("Could not write");
         layers.push(next);
     }
 
@@ -51,7 +51,7 @@ fn data<A: NetworkData, B: NetworkData>(
     a: &DirectedNetworkGraph<A>,
     b: &DirectedNetworkGraph<B>,
 ) {
-    println!("From: {} to {}", level_a, level_b);
+    println!("From: {level_a} to {level_b}");
     let nodes_a = a.nodes().len();
     let nodes_b = b.nodes().len();
     let percentage = nodes_b as f32 / nodes_a as f32 - 1.0;

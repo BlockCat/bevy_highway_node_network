@@ -33,6 +33,6 @@ impl NetworkData for () {
     fn add_edge(&mut self, _: EdgeId, _: Self::EdgeData, _: ShortcutState<usize>) {}
 
     fn with_size(_: usize, _: usize) -> Self {
-        ()
+        
     }
 }

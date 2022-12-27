@@ -73,7 +73,7 @@ impl NodeBuilder for JunctionNode {
     type Data = (JunctionId, Vec2);
 
     fn data(&self) -> Self::Data {
-        (self.junction_id, self.location.clone())
+        (self.junction_id, self.location)
     }
 
     fn id(&self) -> u32 {
@@ -171,11 +171,11 @@ pub fn preprocess_roadmap<P: AsRef<Path>>(
 
         let source = builder.add_node(JunctionNode {
             junction_id: road_id_start,
-            location: section.points.first().unwrap().clone(),
+            location: *section.points.first().unwrap(),
         });
         let target = builder.add_node(JunctionNode {
             junction_id: road_id_end,
-            location: section.points.last().unwrap().clone(),
+            location: *section.points.last().unwrap(),
         });
 
         let distance = section.points.windows(2).map(|w| w[0].distance(w[1])).sum();

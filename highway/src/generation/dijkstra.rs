@@ -13,9 +13,9 @@ pub fn calculate_edges<D: NetworkData>(
     network: &DirectedNetworkGraph<D>,
 ) -> Vec<(NodeId, EdgeId)> {
     let (sorted_order, dag) = create_directed_acyclic_graph(s0, computed, network);
-    let edges = collect_next_level_edges(s0, sorted_order, dag, computed);
+    
 
-    edges
+    collect_next_level_edges(s0, sorted_order, dag, computed)
 }
 
 pub fn create_directed_acyclic_graph<D: NetworkData>(
@@ -74,7 +74,7 @@ pub fn create_directed_acyclic_graph<D: NetworkData>(
                 parent: ParentEntry {
                     parent: entry.state.current,
                     parent_edge_distance: child_edge.distance(),
-                    parent_edge: id.into(),
+                    parent_edge: id,
                     active,
                 },
             });
@@ -147,7 +147,7 @@ fn initialize_heap<D: NetworkData>(
             parent: ParentEntry {
                 parent: s0,
                 parent_edge_distance: edge.distance(),
-                parent_edge: id.into(),
+                parent_edge: id,
                 active: true,
             },
         });
@@ -315,7 +315,7 @@ mod tests {
         for (parent, id) in next_edges {
             let edge = network.edge(id);
             assert_ne!(parent, edge.target());
-            println!("ID: {:?} - {:?}", id, edge);
+            println!("ID: {id:?} - {edge:?}");
         }
     }
 
@@ -339,7 +339,7 @@ mod tests {
         println!("Added:");
         for (_, id) in next_edges {
             let edge = network.edge(id);
-            println!("ID: {:?} - {:?}", id, edge);
+            println!("ID: {id:?} - {edge:?}");
         }
     }
 }

@@ -85,7 +85,7 @@ impl<'a, D: NetworkData> Iterator for ForwardDijkstraIterator<'a, D> {
 
             return Some((node, distance));
         }
-        return None;
+        None
     }
 }
 
@@ -109,6 +109,6 @@ impl<'a, D: NetworkData> Iterator for BackwardDijkstraIterator<'a, D> {
 
             return Some((node, distance));
         }
-        return None;
+        None
     }
 }

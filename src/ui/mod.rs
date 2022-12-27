@@ -96,8 +96,6 @@ fn point_system(
                         _ => {}
                     }
                 });
-
-                return;
             }
         }
     }

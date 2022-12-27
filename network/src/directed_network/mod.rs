@@ -59,7 +59,7 @@ impl NetworkEdge {
     //     self.id
     // }
     pub fn target(&self) -> NodeId {
-        self.target_node.into()
+        self.target_node
     }
 
     pub fn distance(&self) -> f32 {

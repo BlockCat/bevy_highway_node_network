@@ -109,7 +109,7 @@ impl IntermediateNetwork {
         self.in_edges
             .entry(target)
             .or_default()
-            .insert(source, edge.clone());
+            .insert(source, edge);
     }
 
     pub fn remove_node(&mut self, node: NodeId) {

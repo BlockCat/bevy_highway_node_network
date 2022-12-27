@@ -1,5 +1,5 @@
 use crate::world::WorldEntitySelectionType;
-use crate::{nwb::NWBNetworkData, world::WorldEntity};
+use crate::{world::WorldEntity};
 use bevy::prelude::*;
 use bevy_egui::egui;
 use bevy_egui::EguiContext;
@@ -111,7 +111,7 @@ where
         // test.push(parent);
         // println!("GRR: {} > {} of {}", x, old_distance, spare_distance);
         if current == target {
-            println!("Evaluated: {}", evaluated);
+            println!("Evaluated: {evaluated}");
             let mut path = Vec::new();
             let mut node = current;
 
@@ -136,7 +136,7 @@ where
             ));
         }
     }
-    println!("Not found but Evaluated: {}", evaluated);
+    println!("Not found but Evaluated: {evaluated}");
 
-    return Err(String::from("No path found"));
+    Err(String::from("No path found"))
 }

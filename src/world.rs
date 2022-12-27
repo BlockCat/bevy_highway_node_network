@@ -163,7 +163,7 @@ fn load_road_map(config: &Res<WorldConfig>) -> RoadMap {
     let road_map = if let Ok(road_map) = crate::read_file(road_map_path) {
         road_map
     } else {
-        println!("File {:?} not found, creating...", road_map_path);
+        println!("File {road_map_path:?} not found, creating...");
         let road_map = bevy_shapefile::from_shapefile(&config.shapefile_path)
             .expect("Could not read shapefile");
 
@@ -182,7 +182,7 @@ fn load_graph(
     let network = if let Ok(network) = crate::read_file(network_path) {
         network
     } else {
-        println!("File {:?} not found, creating...", network_path);
+        println!("File {network_path:?} not found, creating...");
         let network = nwb::preprocess_roadmap(road_map, &config.database_path);
         crate::write_file(&network, network_path).expect("Could not write network");
         network
@@ -196,10 +196,8 @@ fn mark_on_changed_preprocess(
     mut q_camera: Query<(&Camera, &GlobalTransform, &mut Transform), (With<MainCamera>,)>,
 ) {
     if let Some(preprocess) = preprocess {
-        if preprocess.is_added() {
-            if let Ok(_) = q_camera.get_single_mut() {
-                tracker.map.clear();
-            }
+        if preprocess.is_added() && q_camera.get_single_mut().is_ok() {
+            tracker.map.clear();
         }
     }
 }

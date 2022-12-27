@@ -19,7 +19,7 @@ network = {path = "./network"}
 rusqlite = {version = "0.28.0", features = ["bundled"]}
 
 serde = {version = "1.0.136", features = ["derive"]}
-zstd = "0.12.1+zstd.1.5.2"
+zstd = "0.12"
 
 futures-lite = "1.12.0"
 rayon = "1.5.1"
@@ -37,8 +37,9 @@ opt-level = 3
 [profile.dev.package.bevy]
 opt-level = 3
 
-[profile.dev.package.bevy_prototype_lyon]
+[profile.dev.package.rayon]
 opt-level = 3
+
 
 [workspace]
 members = ["bevy_shapefile", "network", "highway", "tools/dbf_to_sql"]
