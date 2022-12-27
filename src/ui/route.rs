@@ -1,15 +1,13 @@
-use crate::world::WorldEntitySelectionType;
-use crate::{world::WorldEntity};
+use super::DirectedNetworkGraphContainer;
+use crate::world::WorldEntity;
 use bevy::prelude::*;
 use bevy_egui::egui;
 use bevy_egui::EguiContext;
 use network::{iterators::F32, DirectedNetworkGraph, EdgeId, NetworkData, NodeId};
 use std::{
     cmp::Reverse,
-    collections::{BinaryHeap, HashMap, HashSet},
+    collections::{BinaryHeap, HashMap},
 };
-
-use super::DirectedNetworkGraphContainer;
 
 pub struct RouteUIPlugin;
 
@@ -58,17 +56,19 @@ fn route_draw(
     mut query: Query<&mut WorldEntity>,
     network: Res<DirectedNetworkGraphContainer>,
 ) {
-    if let Some(loaded) = &route_state.edges {
-        let l = loaded
-            .iter()
-            .map(|(_, e)| *network.edge_data(*e))
-            .collect::<HashSet<_>>();
+    if let Some(route) = &route_state.edges {
+        // Collect all roadIds in the map.
+        unimplemented!("Road highlighting not implemented");
+        // let l = route
+        //     .iter()
+        //     .map(|(_, e)| *network.edge_data(*e))
+        //     .collect::<HashSet<_>>();
 
-        query.for_each_mut(|mut a| {
-            if l.contains(&a.id) {
-                a.selected = WorldEntitySelectionType::Route;// Some(Color::ALICE_BLUE);
-            }
-        });
+        // query.for_each_mut(|mut a| {
+        //     if l.contains(&a.id) {
+        //         a.selected = WorldEntitySelectionType::Route;// Some(Color::ALICE_BLUE);
+        //     }
+        // });
     }
 }
 

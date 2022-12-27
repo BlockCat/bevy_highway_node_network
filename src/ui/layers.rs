@@ -1,7 +1,7 @@
 use std::{collections::HashMap, path::Path};
 
 use crate::{
-    nwb::NWBNetworkData,
+    nwb::{NWBNetworkData, NwbGraph},
     world::{WorldEntity, WorldEntitySelectionType},
 };
 use bevy::{
@@ -105,46 +105,48 @@ pub fn handle_preprocess_task(
 }
 
 fn clicked_preprocess(
-    base: DirectedNetworkGraph<NWBNetworkData>,
+    base: NwbGraph,
     layer_count: usize,
     neighbourhood: usize,
     contraction_factor: f32,
 ) -> PreProcess {
     println!("Clicked: {layer_count}");
 
-    let mut layers = Vec::new();
+    
+    unimplemented!("Preprocess disabled")
+    
+    // let mut layers = Vec::new();
+    // layers.push(load_or_calculate("data/layer_0.graph", || {
+    //     highway::generation::calculate_layer(neighbourhood, &base, contraction_factor)
+    // }));
 
-    layers.push(load_or_calculate("data/layer_0.graph", || {
-        highway::generation::calculate_layer(neighbourhood, &base, contraction_factor)
-    }));
+    // println!(
+    //     "Base edges: {}, nodes: {}",
+    //     base.edge_count(),
+    //     base.node_count()
+    // );
 
-    println!(
-        "Base edges: {}, nodes: {}",
-        base.edges().len(),
-        base.nodes().len()
-    );
+    // for i in 1..layer_count {
+    //     let size = neighbourhood;
+    //     let network = layers.last().unwrap();
+    //     let path = format!("data/layer_{i}.graph");
+    //     let next_layer = load_or_calculate(path, || {
+    //         highway::generation::calculate_layer(size, network, contraction_factor)
+    //     });
 
-    for i in 1..layer_count {
-        let size = neighbourhood;
-        let network = layers.last().unwrap();
-        let path = format!("data/layer_{i}.graph");
-        let next_layer = load_or_calculate(path, || {
-            highway::generation::calculate_layer(size, network, contraction_factor)
-        });
+    //     println!(
+    //         "Layer {} edges: {}/{}, nodes: {}/{}",
+    //         i,
+    //         next_layer.edges().len(),
+    //         network.edges().len() as f32 / next_layer.edges().len() as f32,
+    //         next_layer.nodes().len(),
+    //         network.nodes().len() as f32 / next_layer.nodes().len() as f32
+    //     );
 
-        println!(
-            "Layer {} edges: {}/{}, nodes: {}/{}",
-            i,
-            next_layer.edges().len(),
-            network.edges().len() as f32 / next_layer.edges().len() as f32,
-            next_layer.nodes().len(),
-            network.nodes().len() as f32 / next_layer.nodes().len() as f32
-        );
+    //     layers.push(next_layer);
+    // }
 
-        layers.push(next_layer);
-    }
-
-    PreProcess::new(base, layers)
+    // PreProcess::new(base, layers)
 }
 
 pub fn colouring_system(
@@ -160,11 +162,13 @@ pub fn colouring_system(
         } else {
             query.par_for_each_mut(32, |mut we| {
                 for (i, sel) in ui_state.layers_selected.iter().enumerate() {
-                    if *sel && preprocess
+                    if *sel
+                        && preprocess
                             .road_data_level
                             .get(&we.id)
                             .map(|&x| x > i as u8)
-                            .unwrap_or_default() {
+                            .unwrap_or_default()
+                    {
                         we.selected = WorldEntitySelectionType::BaseSelected;
                     }
                 }

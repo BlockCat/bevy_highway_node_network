@@ -1,12 +1,13 @@
 use crate::{
-    nwb::NWBNetworkData,
+    nwb::NwbGraph,
     world::{WorldEntity, WorldEntitySelectionType},
 };
 use bevy::prelude::*;
 use bevy_egui::EguiPlugin;
 use bevy_shapefile::RoadMap;
 pub use layers::PreProcess;
-use network::{DirectedNetworkGraph, NodeId};
+
+use petgraph::visit::IntoNodeReferences;
 use std::{
     collections::HashSet,
     ops::{Deref, DerefMut},
@@ -20,10 +21,11 @@ mod route;
 pub struct HighwayUiPlugin;
 
 #[derive(Resource, Debug)]
-pub struct DirectedNetworkGraphContainer(pub DirectedNetworkGraph<NWBNetworkData>);
+// pub struct DirectedNetworkGraphContainer(pub DirectedNetworkGraph<NWBNetworkData>);
+pub struct DirectedNetworkGraphContainer(pub NwbGraph);
 
 impl Deref for DirectedNetworkGraphContainer {
-    type Target = DirectedNetworkGraph<NWBNetworkData>;
+    type Target = NwbGraph;
 
     fn deref(&self) -> &Self::Target {
         &self.0
@@ -73,19 +75,19 @@ fn point_system(
                     .nearest_neighbor(&[world.x, world.y])
                     .unwrap();
 
-                let node_id = (0..network.nodes().len())
-                    .map(NodeId::from)
-                    .find(|x| network.node_data(*x).0 == node.junction_id)
+                let node_id = network
+                    .node_references()
+                    .find(|n| n.1 .0 == node.junction_id)
+                    .map(|n| n.0)
                     .unwrap();
 
                 let out_edges = network
-                    .out_edges(node_id)
-                    .map(|(id, _)| *network.edge_data(id))
+                    .edges_directed(node_id, petgraph::Direction::Outgoing)
+                    .map(|x| *x.weight())
                     .collect::<HashSet<_>>();
-
                 let in_edges = network
-                    .in_edges(node_id)
-                    .map(|(id, _)| *network.edge_data(id))
+                    .edges_directed(node_id, petgraph::Direction::Incoming)
+                    .map(|x| *x.weight())
                     .collect::<HashSet<_>>();
 
                 query.for_each_mut(|mut we| {

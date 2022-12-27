@@ -1,9 +1,10 @@
 use bevy::math::Vec2;
 use bevy_shapefile::{JunctionId, RoadId, RoadMap};
 use network::{
-    builder::{DirectedNetworkBuilder, EdgeBuilder, EdgeDirection, NodeBuilder},
-    DirectedNetworkGraph, EdgeId, NetworkData, NodeId, ShortcutState,
+    builder::{EdgeBuilder, EdgeDirection, NodeBuilder},
+    EdgeId, NetworkData, NodeId, ShortcutState,
 };
+use petgraph::stable_graph::{IndexType, StableDiGraph};
 use rusqlite::{
     types::{FromSql, FromSqlError},
     Connection,
@@ -11,10 +12,29 @@ use rusqlite::{
 use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, hash::Hash, path::Path};
 
+#[derive(
+    Debug, Clone, Copy, Hash, PartialEq, Eq, PartialOrd, Ord, Default, Serialize, Deserialize,
+)]
+pub struct NwbIndex(usize);
+unsafe impl IndexType for NwbIndex {
+    fn new(x: usize) -> Self {
+        Self(x)
+    }
+
+    fn index(&self) -> usize {
+        self.0
+    }
+
+    fn max() -> Self {
+        NwbIndex(usize::MAX)
+    }
+}
+pub type NwbGraph = StableDiGraph<(JunctionId, Vec2), RoadId, NwbIndex>;
+
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
 pub struct NWBNetworkData {
     pub node_junctions: Vec<(JunctionId, Vec2)>,
-    edge_id: Vec<RoadId>, // for sql, not nwb road_id
+    edge_id: Vec<RoadId>,
 }
 
 impl NetworkData for NWBNetworkData {
@@ -138,15 +158,12 @@ impl FromSql for RijRichting {
     }
 }
 
-pub fn preprocess_roadmap<P: AsRef<Path>>(
-    roadmap: &RoadMap,
-    database: P,
-) -> DirectedNetworkGraph<NWBNetworkData> {
+pub fn preprocess_roadmap<P: AsRef<Path>>(roadmap: &RoadMap, database: P) -> NwbGraph {
     let database = Connection::open(database).expect("Could not open database");
 
-    let mut builder: DirectedNetworkBuilder<JunctionNode, RoadEdge> = DirectedNetworkBuilder::new();
-    let roads = &roadmap.roads;
+    let mut graph = NwbGraph::default();
 
+    let roads = &roadmap.roads;
     let statement = database
         .prepare("SELECT id,junction_id_begin, junction_id_end, rij_richting FROM wegvakken")
         .expect("Could not prepare statement")
@@ -166,28 +183,34 @@ pub fn preprocess_roadmap<P: AsRef<Path>>(
         .map(|x| x.unwrap())
         .collect::<HashMap<RoadId, (JunctionId, JunctionId, RijRichting)>>();
 
-    for (&road_id, section) in roads {
+    let junction_to_node = roadmap
+        .junction_spatial
+        .iter()
+        .map(|s| {
+            let junction_id = s.junction_id;
+
+            (junction_id, graph.add_node((junction_id, s.location)))
+        })
+        .collect::<HashMap<_, _>>();
+
+    for (&road_id, _) in roads {
         let (road_id_start, road_id_end, rij_richting) = statement[&road_id];
 
-        let source = builder.add_node(JunctionNode {
-            junction_id: road_id_start,
-            location: *section.points.first().unwrap(),
-        });
-        let target = builder.add_node(JunctionNode {
-            junction_id: road_id_end,
-            location: *section.points.last().unwrap(),
-        });
+        let source = junction_to_node[&road_id_start];
+        let target = junction_to_node[&road_id_end];
 
-        let distance = section.points.windows(2).map(|w| w[0].distance(w[1])).sum();
-
-        builder.add_edge(RoadEdge {
-            source,
-            target,
-            direction: rij_richting.0,
-            distance,
-            sql_id: road_id,
-        });
+        match rij_richting.0 {
+            EdgeDirection::Forward => {
+                graph.add_edge(source, target, road_id);
+            }
+            EdgeDirection::Both => {
+                graph.add_edge(source, target, road_id);
+                graph.add_edge(target, source, road_id);
+            }
+            EdgeDirection::Backward => {
+                graph.add_edge(target, source, road_id);
+            }
+        }
     }
-
-    builder.build()
+    graph
 }

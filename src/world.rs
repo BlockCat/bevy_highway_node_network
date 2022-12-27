@@ -1,6 +1,6 @@
 use crate::{
     camera::MainCamera,
-    nwb::{self},
+    nwb::{self, NwbGraph},
     ui::{DirectedNetworkGraphContainer, PreProcess},
 };
 use bevy::prelude::*;
@@ -133,8 +133,8 @@ fn init_road_map(config: Res<WorldConfig>, mut commands: Commands) {
     println!("Inserted resources");
 
     println!("Status:");
-    println!("Nodes: {}", network.nodes().len());
-    println!("Edges: {}", network.edges().len());
+    println!("Nodes: {}", network.node_count());
+    println!("Edges: {}", network.edge_count());
 
     // let out = network
     //     .nodes()
@@ -174,12 +174,9 @@ fn load_road_map(config: &Res<WorldConfig>) -> RoadMap {
     road_map
 }
 
-fn load_graph(
-    config: Res<WorldConfig>,
-    road_map: &RoadMap,
-) -> DirectedNetworkGraph<nwb::NWBNetworkData> {
+fn load_graph(config: Res<WorldConfig>, road_map: &RoadMap) -> NwbGraph {
     let network_path = Path::new(&config.directed_graph_path);
-    let network = if let Ok(network) = crate::read_file(network_path) {
+    let network: NwbGraph = if let Ok(network) = crate::read_file(network_path) {
         network
     } else {
         println!("File {network_path:?} not found, creating...");
