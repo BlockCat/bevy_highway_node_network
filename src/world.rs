@@ -5,7 +5,7 @@ use crate::{
 };
 use bevy::{prelude::*, tasks::ComputeTaskPool};
 use bevy_prototype_lyon::{prelude::*, shapes};
-use bevy_shapefile::{RoadMap, RoadSection, AABB};
+use bevy_shapefile::{RoadId, RoadMap, RoadSection, AABB};
 use network::DirectedNetworkGraph;
 use std::{
     collections::{HashMap, HashSet},
@@ -29,13 +29,13 @@ pub struct WorldConfig {
 
 #[derive(Debug, Clone, Component)]
 pub struct WorldEntity {
-    pub id: u32,
+    pub id: RoadId,
     pub selected: Option<Color>,
 }
 
 #[derive(Debug, Default)]
 pub struct WorldTracker {
-    pub map: HashMap<usize, Entity>,
+    pub map: HashMap<RoadId, Entity>,
 }
 
 impl Plugin for WorldPlugin {
@@ -151,7 +151,7 @@ fn visible_entities(
             .road_spatial
             .locate_in_envelope_intersecting(&AABB::from_corners([min.x, min.y], [max.x, max.y]))
             .map(|x| x.id)
-            .collect::<HashSet<usize>>();
+            .collect::<HashSet<_>>();
 
         let tracked = tracker.map.keys().cloned().collect::<HashSet<_>>();
 
@@ -176,7 +176,7 @@ fn visible_entities(
         for id in added {
             let section = road_map.roads.get(id).unwrap();
             let colour = config.normal_colour;
-            let entity = spawn_figure(&mut commands, *id as u32, section, colour);
+            let entity = spawn_figure(&mut commands, *id, section, colour);
             tracker.map.insert(*id, entity);
         }
     }
@@ -203,7 +203,12 @@ pub fn convert(pos: Vec2, transform: &GlobalTransform, camera: &Camera) -> Vec2 
         .truncate()
 }
 
-fn spawn_figure(commands: &mut Commands, id: u32, section: &RoadSection, color: Color) -> Entity {
+fn spawn_figure(
+    commands: &mut Commands,
+    id: RoadId,
+    section: &RoadSection,
+    color: Color,
+) -> Entity {
     let shape = shapes::Polygon {
         closed: false,
         points: section.points.clone(),

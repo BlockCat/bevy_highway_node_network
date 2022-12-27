@@ -1,5 +1,5 @@
 use bevy::math::Vec2;
-use bevy_shapefile::RoadMap;
+use bevy_shapefile::{JunctionId, RoadId, RoadMap};
 use network::{
     builder::{DirectedNetworkBuilder, EdgeBuilder, EdgeDirection, NodeBuilder},
     DirectedNetworkGraph, EdgeId, NetworkData, NodeId, ShortcutState,
@@ -13,13 +13,13 @@ use std::{collections::HashMap, hash::Hash, path::Path};
 
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
 pub struct NWBNetworkData {
-    pub node_junctions: Vec<(usize, Vec2)>,
-    edge_id: Vec<usize>, // for sql, not nwb road_id
+    pub node_junctions: Vec<(JunctionId, Vec2)>,
+    edge_id: Vec<RoadId>, // for sql, not nwb road_id
 }
 
 impl NetworkData for NWBNetworkData {
-    type NodeData = (usize, Vec2);
-    type EdgeData = usize;
+    type NodeData = (JunctionId, Vec2);
+    type EdgeData = RoadId;
 
     fn node_data(&self, node: NodeId) -> &Self::NodeData {
         &self.node_junctions[node.0 as usize]
@@ -31,8 +31,8 @@ impl NetworkData for NWBNetworkData {
 
     fn with_size(node_size: usize, edge_size: usize) -> Self {
         NWBNetworkData {
-            node_junctions: vec![(0, Vec2::ZERO); node_size],
-            edge_id: vec![0; edge_size],
+            node_junctions: vec![(0.into(), Vec2::ZERO); node_size],
+            edge_id: vec![0.into(); edge_size],
         }
     }
 
@@ -45,45 +45,45 @@ impl NetworkData for NWBNetworkData {
     }
 
     fn edge_road_id(&self, edge: EdgeId) -> network::ShortcutState<usize> {
-        ShortcutState::Single(self.edge_id[edge.0 as usize])
+        ShortcutState::Single(self.edge_id[edge.0 as usize].num())
     }
 }
 
 #[derive(Debug)]
-pub struct RoadNode {
-    pub junction_id: usize,
+pub struct JunctionNode {
+    pub junction_id: JunctionId,
     pub location: Vec2,
 }
 
-impl PartialEq for RoadNode {
+impl PartialEq for JunctionNode {
     fn eq(&self, other: &Self) -> bool {
         self.junction_id == other.junction_id
     }
 }
 
-impl Eq for RoadNode {}
+impl Eq for JunctionNode {}
 
-impl Hash for RoadNode {
+impl Hash for JunctionNode {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
         self.junction_id.hash(state);
     }
 }
 
-impl NodeBuilder for RoadNode {
-    type Data = (usize, Vec2);
+impl NodeBuilder for JunctionNode {
+    type Data = (JunctionId, Vec2);
 
     fn data(&self) -> Self::Data {
         (self.junction_id, self.location.clone())
     }
 
     fn id(&self) -> u32 {
-        self.junction_id as u32
+        self.junction_id.num() as u32
     }
 }
 
 #[derive(Debug, Clone)]
 pub struct RoadEdge {
-    sql_id: usize, // Points to sql
+    sql_id: RoadId, // Points to sql
     distance: f32,
     source: NodeId,
     target: NodeId,
@@ -91,7 +91,7 @@ pub struct RoadEdge {
 }
 
 impl EdgeBuilder for RoadEdge {
-    type Data = usize;
+    type Data = RoadId;
 
     fn data(&self) -> Self::Data {
         self.sql_id
@@ -114,7 +114,7 @@ impl EdgeBuilder for RoadEdge {
     }
 
     fn road_id(&self) -> ShortcutState<usize> {
-        ShortcutState::Single(self.sql_id)
+        ShortcutState::Single(self.sql_id.num())
     }
 }
 
@@ -144,7 +144,7 @@ pub fn preprocess_roadmap<P: AsRef<Path>>(
 ) -> DirectedNetworkGraph<NWBNetworkData> {
     let database = Connection::open(database).expect("Could not open database");
 
-    let mut builder: DirectedNetworkBuilder<RoadNode, RoadEdge> = DirectedNetworkBuilder::new();
+    let mut builder: DirectedNetworkBuilder<JunctionNode, RoadEdge> = DirectedNetworkBuilder::new();
     let roads = &roadmap.roads;
 
     let statement = database
@@ -155,20 +155,25 @@ pub fn preprocess_roadmap<P: AsRef<Path>>(
             let junction_start: usize = f.get(1)?;
             let junction_end: usize = f.get(2)?;
             let rij_richting: RijRichting = f.get(3)?;
+
+            let id = RoadId::from(id);
+            let junction_start = JunctionId::from(junction_start);
+            let junction_end = JunctionId::from(junction_end);
+
             Ok((id, (junction_start, junction_end, rij_richting)))
         })
         .expect("Could not")
         .map(|x| x.unwrap())
-        .collect::<HashMap<usize, (usize, usize, RijRichting)>>();
+        .collect::<HashMap<RoadId, (JunctionId, JunctionId, RijRichting)>>();
 
-    for (&sql_id, section) in roads {
-        let (road_id_start, road_id_end, rij_richting) = statement[&sql_id];
+    for (&road_id, section) in roads {
+        let (road_id_start, road_id_end, rij_richting) = statement[&road_id];
 
-        let source = builder.add_node(RoadNode {
+        let source = builder.add_node(JunctionNode {
             junction_id: road_id_start,
             location: section.points.first().unwrap().clone(),
         });
-        let target = builder.add_node(RoadNode {
+        let target = builder.add_node(JunctionNode {
             junction_id: road_id_end,
             location: section.points.last().unwrap().clone(),
         });
@@ -180,7 +185,7 @@ pub fn preprocess_roadmap<P: AsRef<Path>>(
             target,
             direction: rij_richting.0,
             distance,
-            sql_id,
+            sql_id: road_id,
         });
     }
 

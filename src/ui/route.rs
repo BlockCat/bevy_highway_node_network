@@ -58,7 +58,7 @@ fn route_draw(
     if let Some(loaded) = &route_state.edges {
         let l = loaded
             .iter()
-            .map(|(_, e)| *network.edge_data(*e) as u32)
+            .map(|(_, e)| *network.edge_data(*e))
             .collect::<HashSet<_>>();
 
         query.for_each_mut(|mut a| {

@@ -5,9 +5,12 @@ use bevy::{
 use rstar::{PointDistance, RTreeObject, AABB};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
+use crate::{JunctionId, RoadId};
+
+/// A road section, with id, points and bounding box
 #[derive(Serialize, Deserialize, Debug)]
 pub struct RoadSection {
-    pub id: usize,
+    pub id: RoadId,
     pub points: Vec<Vec2>,
     #[serde(
         serialize_with = "serialize_aabb",
@@ -16,30 +19,9 @@ pub struct RoadSection {
     pub aabb: Aabb,
 }
 
-
-#[derive(Serialize, Deserialize, Debug)]
-pub struct RoadSpatialIndex {
-    pub id: usize, // Points to a road in the RoadMap
-    #[serde(
-        serialize_with = "serialize_aabb",
-        deserialize_with = "deserialize_aabb"
-    )]
-    pub aabb: Aabb,
-}
-
-impl RTreeObject for RoadSpatialIndex {
-    type Envelope = rstar::AABB<[f32; 2]>;
-
-    fn envelope(&self) -> Self::Envelope {
-        let min = self.aabb.min();
-        let max = self.aabb.max();
-        rstar::AABB::from_corners([min.x, min.y], [max.x, max.y])
-    }
-}
-
 #[derive(Serialize, Deserialize, Debug)]
 pub struct JunctionSpatialIndex {
-    pub junction_id: usize,
+    pub junction_id: JunctionId,
     pub location: Vec2,
 }
 
@@ -58,6 +40,26 @@ impl PointDistance for JunctionSpatialIndex {
     ) -> <<Self::Envelope as rstar::Envelope>::Point as rstar::Point>::Scalar {
         self.location
             .distance_squared(Vec2::new(point[0], point[1]))
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct RoadSpatialIndex {
+    pub id: RoadId, // Points to a road in the RoadMap
+    #[serde(
+        serialize_with = "serialize_aabb",
+        deserialize_with = "deserialize_aabb"
+    )]
+    pub aabb: Aabb,
+}
+
+impl RTreeObject for RoadSpatialIndex {
+    type Envelope = rstar::AABB<[f32; 2]>;
+
+    fn envelope(&self) -> Self::Envelope {
+        let min = self.aabb.min();
+        let max = self.aabb.max();
+        rstar::AABB::from_corners([min.x, min.y], [max.x, max.y])
     }
 }
 

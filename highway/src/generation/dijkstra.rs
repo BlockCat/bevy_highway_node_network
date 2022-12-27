@@ -203,12 +203,12 @@ mod tests {
     // https://www.baeldung.com/wp-content/uploads/2017/01/initial-graph.png
     pub fn create_ref_network_1() -> DirectedNetworkGraph<()> {
         let nodes = vec![
-            NetworkNode::new(0, 2),
-            NetworkNode::new(2, 5),
-            NetworkNode::new(5, 7),
-            NetworkNode::new(7, 10),
-            NetworkNode::new(10, 13),
-            NetworkNode::new(13, 16),
+            NetworkNode::new(0, 0, 2),
+            NetworkNode::new(1, 2, 5),
+            NetworkNode::new(2, 5, 7),
+            NetworkNode::new(3, 7, 10),
+            NetworkNode::new(4, 10, 13),
+            NetworkNode::new(5, 13, 16),
         ];
         let edges = vec![
             NetworkEdge::new(0, 1u32.into(), 10.0, EdgeDirection::Forward), // A -> B

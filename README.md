@@ -7,6 +7,13 @@
 2. Extract contents to /data folder.
 3. Create a database using the tools/dbf_to_sql tool.
 
+## Structure:
+
+### Visualization
+
+- main package: Uses bevy for visualization (using weird stuff)
+- bevy_shapefile: Load spatial data for visualization
+
 
 ## Changes:
 

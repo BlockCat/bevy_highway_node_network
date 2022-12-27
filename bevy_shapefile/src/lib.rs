@@ -1,4 +1,5 @@
 pub use road_map::*;
+use serde::{Deserialize, Serialize};
 pub use spatial::*;
 use std::path::Path;
 
@@ -22,4 +23,34 @@ pub fn from_shapefile<P: AsRef<Path>>(path: P) -> Result<RoadMap, ShapeError> {
 pub enum ShapeError {
     IO,
     Shape(shapefile::Error),
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub struct JunctionId(usize);
+
+impl JunctionId {
+    pub fn num(&self) -> usize {
+        self.0
+    }
+}
+
+impl From<usize> for JunctionId {
+    fn from(value: usize) -> Self {
+        Self(value)
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub struct RoadId(usize);
+
+impl RoadId {
+    pub fn num(&self) -> usize {
+        self.0
+    }
+}
+
+impl From<usize> for RoadId {
+    fn from(value: usize) -> Self {
+        Self(value)
+    }
 }

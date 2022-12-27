@@ -22,7 +22,7 @@ impl Plugin for HighwayUiPlugin {
                 contraction_factor: 2.0,
                 base_selected: false,
                 layers_selected: vec![],
-                processing: false
+                processing: false,
             })
             .add_system(layers::colouring_system)
             .add_system(layers::handle_preprocess_task)
@@ -67,10 +67,7 @@ fn point_system(
                     .collect::<HashSet<_>>();
 
                 query.for_each_mut(|mut we| {
-                    match (
-                        out_edges.contains(&(we.id as usize)),
-                        in_edges.contains(&(we.id as usize)),
-                    ) {
+                    match (out_edges.contains(&we.id), in_edges.contains(&we.id)) {
                         (true, true) => we.selected = Some(Color::GREEN),
                         (true, false) => we.selected = Some(Color::RED),
                         (false, true) => we.selected = Some(Color::YELLOW),

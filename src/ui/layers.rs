@@ -6,6 +6,7 @@ use bevy::{
     tasks::{AsyncComputeTaskPool, ComputeTaskPool, Task},
 };
 use bevy_egui::{egui, EguiContext};
+use bevy_shapefile::RoadId;
 use futures_lite::future;
 use highway::generation::intermediate_network::IntermediateData;
 use network::{DirectedNetworkGraph, EdgeId, NetworkData};
@@ -158,7 +159,7 @@ pub fn colouring_system(
                     if *sel {
                         if preprocess
                             .road_data_level
-                            .get(&(we.id as usize))
+                            .get(&we.id)
                             .map(|&x| x > i as u8)
                             .unwrap_or_default()
                         {
@@ -174,7 +175,7 @@ pub fn colouring_system(
 pub struct PreProcess {
     pub base: DirectedNetworkGraph<NWBNetworkData>,
     pub layers: Vec<DirectedNetworkGraph<IntermediateData>>,
-    pub road_data_level: HashMap<usize, u8>,
+    pub road_data_level: HashMap<RoadId, u8>,
 }
 
 impl PreProcess {
@@ -185,7 +186,7 @@ impl PreProcess {
         let mut road_data_level = (0..base.edges().len())
             .map(|x| EdgeId::from(x))
             .flat_map(|id| Vec::from(base.data.edge_road_id(id)))
-            .map(|x| (x, 0))
+            .map(|x| (RoadId::from(x), 0))
             .collect::<HashMap<_, _>>();
 
         println!("Base line of: {}", road_data_level.len());
@@ -206,19 +207,19 @@ impl PreProcess {
 fn process_edges<A: NetworkData>(
     layer_id: u8,
     network: &DirectedNetworkGraph<A>,
-    road_data: &mut HashMap<usize, u8>,
+    road_data: &mut HashMap<RoadId, u8>,
 ) {
     for id in 0..network.edges().len() {
         let id = EdgeId::from(id);
         match network.data.edge_road_id(id) {
             network::ShortcutState::Single(a) => {
-                road_data.entry(a).and_modify(|f| {
+                road_data.entry(RoadId::from(a)).and_modify(|f| {
                     *f = layer_id;
                 });
             }
             network::ShortcutState::Shortcut(b) => {
                 for a in b {
-                    road_data.entry(a).and_modify(|f| {
+                    road_data.entry(RoadId::from(a)).and_modify(|f| {
                         *f = layer_id;
                     });
                 }

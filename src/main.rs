@@ -3,7 +3,7 @@
 #![feature(test)]
 extern crate test;
 
-use bevy::{prelude::*, DefaultPlugins};
+use bevy::{diagnostic::{FrameTimeDiagnosticsPlugin, LogDiagnosticsPlugin}, prelude::*, DefaultPlugins};
 use bevy_dutch_road_highway_node_network::{
     camera::{CameraConfig, CameraPlugin},
     ui::HighwayUiPlugin,
@@ -18,6 +18,8 @@ fn main() {
         .add_plugins(DefaultPlugins)
         .add_plugin(HighwayUiPlugin)
         .add_plugin(ShapePlugin)
+        .add_plugin(LogDiagnosticsPlugin::default())
+        .add_plugin(FrameTimeDiagnosticsPlugin::default())
         .add_plugin(WorldPlugin {
             config: WorldConfig {
                 database_path: "data/database.db".into(),
