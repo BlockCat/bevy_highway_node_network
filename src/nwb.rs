@@ -1,32 +1,15 @@
 use bevy::math::Vec2;
 use bevy_shapefile::{JunctionId, RoadId, RoadMap};
-use network::builder::EdgeDirection;
-use petgraph::stable_graph::{IndexType, StableDiGraph};
+use network::{HighwayEdgeIndex, HighwayGraph, HighwayNodeIndex};
 use rusqlite::{
     types::{FromSql, FromSqlError},
     Connection,
 };
-use serde::{Deserialize, Serialize};
-use std::{collections::HashMap, hash::Hash, path::Path};
+use std::{collections::HashMap, path::Path};
 
-#[derive(
-    Debug, Clone, Copy, Hash, PartialEq, Eq, PartialOrd, Ord, Default, Serialize, Deserialize,
-)]
-pub struct NwbIndex(usize);
-unsafe impl IndexType for NwbIndex {
-    fn new(x: usize) -> Self {
-        Self(x)
-    }
-
-    fn index(&self) -> usize {
-        self.0
-    }
-
-    fn max() -> Self {
-        NwbIndex(usize::MAX)
-    }
-}
-pub type NwbGraph = StableDiGraph<(JunctionId, Vec2), RoadId, NwbIndex>;
+pub type NwbGraph = HighwayGraph<(JunctionId, Vec2), RoadId>;
+pub type NwbNodeIndex = HighwayNodeIndex; //NodeIndex<NwbIndex>;
+pub type NwbEdgeIndex = HighwayEdgeIndex; //EdgeIndex<NwbIndex>;
 
 pub fn preprocess_roadmap<P: AsRef<Path>>(roadmap: &RoadMap, database: P) -> NwbGraph {
     let database = Connection::open(database).expect("Could not open database");
@@ -69,15 +52,15 @@ pub fn preprocess_roadmap<P: AsRef<Path>>(roadmap: &RoadMap, database: P) -> Nwb
         let source = junction_to_node[&road_id_start];
         let target = junction_to_node[&road_id_end];
 
-        match rij_richting.0 {
-            EdgeDirection::Forward => {
+        match rij_richting {
+            RijRichting::Forward => {
                 graph.add_edge(source, target, road_id);
             }
-            EdgeDirection::Both => {
+            RijRichting::Both => {
                 graph.add_edge(source, target, road_id);
                 graph.add_edge(target, source, road_id);
             }
-            EdgeDirection::Backward => {
+            RijRichting::Backward => {
                 graph.add_edge(target, source, road_id);
             }
         }
@@ -86,7 +69,11 @@ pub fn preprocess_roadmap<P: AsRef<Path>>(roadmap: &RoadMap, database: P) -> Nwb
 }
 
 #[derive(Debug, Clone, Copy)]
-struct RijRichting(EdgeDirection);
+enum RijRichting {
+    Forward,
+    Backward,
+    Both,
+}
 
 impl FromSql for RijRichting {
     fn column_result(value: rusqlite::types::ValueRef<'_>) -> rusqlite::types::FromSqlResult<Self> {
@@ -96,10 +83,10 @@ impl FromSql for RijRichting {
             .next()
             .ok_or(FromSqlError::InvalidType)?;
         match rij_richting {
-            'H' => Ok(RijRichting(EdgeDirection::Forward)),
-            'T' => Ok(RijRichting(EdgeDirection::Backward)),
-            'B' => Ok(RijRichting(EdgeDirection::Both)),
-            'O' => Ok(RijRichting(EdgeDirection::Both)),
+            'H' => Ok(RijRichting::Forward),
+            'T' => Ok(RijRichting::Backward),
+            'B' => Ok(RijRichting::Both),
+            'O' => Ok(RijRichting::Both),
             _ => Err(FromSqlError::InvalidType),
         }
     }

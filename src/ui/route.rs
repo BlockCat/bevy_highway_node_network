@@ -1,13 +1,16 @@
+use std::collections::HashSet;
+
 use super::DirectedNetworkGraphContainer;
+use crate::nwb::NwbEdgeIndex;
+use crate::nwb::NwbGraph;
+use crate::nwb::NwbNodeIndex;
 use crate::world::WorldEntity;
+use crate::world::WorldEntitySelectionType;
 use bevy::prelude::*;
 use bevy_egui::egui;
 use bevy_egui::EguiContext;
-use network::{iterators::F32, DirectedNetworkGraph, EdgeId, NetworkData, NodeId};
-use std::{
-    cmp::Reverse,
-    collections::{BinaryHeap, HashMap},
-};
+use bevy_shapefile::RoadId;
+use petgraph::algo;
 
 pub struct RouteUIPlugin;
 
@@ -22,9 +25,9 @@ impl Plugin for RouteUIPlugin {
 #[derive(Debug, Default, Resource)]
 pub struct RouteState {
     find_nodes: bool,
-    node_1: Option<NodeId>,
-    node_2: Option<NodeId>,
-    edges: Option<Vec<(NodeId, EdgeId)>>,
+    node_1: Option<NwbNodeIndex>,
+    node_2: Option<NwbNodeIndex>,
+    edges: Option<Vec<NwbEdgeIndex>>,
 }
 
 pub fn gui_system(mut egui_context: ResMut<EguiContext>, mut state: ResMut<RouteState>) {
@@ -39,11 +42,11 @@ pub fn gui_system(mut egui_context: ResMut<EguiContext>, mut state: ResMut<Route
 
         let n1 = state
             .node_1
-            .map(|x| format!("Node: {}", *x))
+            .map(|x| format!("Node: {:?}", x))
             .unwrap_or("Node: none".into());
         let n2 = state
             .node_1
-            .map(|x| format!("Node: {}", *x))
+            .map(|x| format!("Node: {:?}", x))
             .unwrap_or("Node: none".into());
 
         ui.label(n1);
@@ -57,86 +60,41 @@ fn route_draw(
     network: Res<DirectedNetworkGraphContainer>,
 ) {
     if let Some(route) = &route_state.edges {
-        // Collect all roadIds in the map.
-        unimplemented!("Road highlighting not implemented");
-        // let l = route
-        //     .iter()
-        //     .map(|(_, e)| *network.edge_data(*e))
-        //     .collect::<HashSet<_>>();
+        // Collect all roadIds.
+        let l = route.iter().map(|e| network[*e]).collect::<HashSet<_>>();
 
-        // query.for_each_mut(|mut a| {
-        //     if l.contains(&a.id) {
-        //         a.selected = WorldEntitySelectionType::Route;// Some(Color::ALICE_BLUE);
-        //     }
-        // });
+        query.for_each_mut(|mut a| {
+            if l.contains(&a.id) {
+                a.selected = WorldEntitySelectionType::Route;
+            }
+        });
     }
 }
 
-fn find_route<D, F>(
-    source: NodeId,
-    target: NodeId,
-    network: &DirectedNetworkGraph<D>,
-    spare: F,
-) -> Result<Vec<(NodeId, EdgeId)>, String>
+fn find_route<E, F>(
+    source: NwbNodeIndex,
+    target: NwbNodeIndex,
+    graph: &NwbGraph,
+    edge_cost: E,
+    estimate_to_target: F,
+) -> Result<Vec<NwbEdgeIndex>, String>
 where
-    D: NetworkData,
-    F: Fn(NodeId, NodeId) -> f32,
+    E: Fn(&RoadId) -> f32,
+    F: Fn(NwbNodeIndex, NwbNodeIndex) -> f32,
 {
-    let mut map = HashMap::new();
-    let mut evaluated = 0usize;
-    // let mut test = Vec::new();
+    let path = algo::astar(
+        graph,
+        source,
+        |finish| finish == target,
+        |e| edge_cost(e.weight()),
+        |n| estimate_to_target(n, target),
+    );
 
-    let mut heap = BinaryHeap::new();
-    for (id, initial_descendant) in network.out_edges(source) {
-        let target = initial_descendant.target();
-        let distance = initial_descendant.distance();
-
-        heap.push((
-            Reverse(F32(distance + spare(source, target))),
-            F32(distance),
-            target,
-            (source, id),
-        ));
-    }
-
-    while let Some((_, F32(old_distance), current, parent)) = heap.pop() {
-        let spare_distance = spare(current, target);
-        evaluated += 1;
-
-        if map.contains_key(&current) {
-            continue;
-        }
-        map.insert(current, parent);
-
-        // test.push(parent);
-        // println!("GRR: {} > {} of {}", x, old_distance, spare_distance);
-        if current == target {
-            println!("Evaluated: {evaluated}");
-            let mut path = Vec::new();
-            let mut node = current;
-
-            while let Some((parent, edge)) = map.remove(&node) {
-                path.push((node, edge));
-                node = parent;
-            }
-
-            path.reverse();
-            return Ok(path);
-        }
-
-        for (id, edge) in network.out_edges(current) {
-            let target = edge.target();
-            let distance = edge.distance() + old_distance;
-
-            heap.push((
-                Reverse(F32(distance + spare_distance)),
-                F32(distance),
-                target,
-                (current, id),
-            ));
-        }
-    }
-    println!("Not found but Evaluated: {evaluated}");
-
-    Err(String::from("No path found"))
+    path.map(|path| {
+        path.1
+            .windows(2)
+            .map(|nodes| graph.find_edge(nodes[0], nodes[1]).unwrap())
+            .collect::<Vec<_>>()
+    })
+    .ok_or_else(|| String::from("No path found"))
 }

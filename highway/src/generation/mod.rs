@@ -1,15 +1,13 @@
-use self::intermediate_network::{IntermediateData, IntermediateNetwork};
-use crate::generation::intermediate_network::IntermediateEdge;
-use network::{
-    BackwardNeighbourhood, DirectedNetworkGraph, ForwardNeighbourhood, NetworkData, ShortcutState,
-};
+use network::{iterators::Distanceable, BackwardNeighbourhood, ForwardNeighbourhood, HighwayGraph};
 use rayon::prelude::*;
 use std::collections::HashSet;
+
+use self::core::Shorted;
 
 pub mod core;
 pub mod dag;
 pub mod dijkstra;
-pub mod intermediate_network;
+// pub mod intermediate_network;
 
 macro_rules! stopwatch {
     ($x:expr) => {{
@@ -44,64 +42,66 @@ macro_rules! stopwatch {
     }};
 }
 
-pub fn calculate_layer<D: NetworkData>(
+/// Calculate the next layer from a network.
+/// Phase 1: Generate highway network
+/// Phase 2: Create a core graph and bypass nodes
+pub fn calculate_layer<N, E>(
     size: usize,
-    network: &DirectedNetworkGraph<D>,
+    network: HighwayGraph<N, E>,
     contraction_factor: f32,
-) -> DirectedNetworkGraph<IntermediateData> {
-    let intermediate = phase_1(size, network);
+) -> HighwayGraph<N, Shorted>
+where
+    N: Send + Sync + Clone,
+    E: Send + Sync + Distanceable,
+{
+    let phase_1_graph = phase_1(size, network);
+    let phase_2_graph = phase_2(phase_1_graph, contraction_factor);
 
-    let intermediate = phase_2(intermediate, contraction_factor);
-
-    DirectedNetworkGraph::from(intermediate)
+    phase_2_graph
 }
-pub(crate) fn phase_1<D: NetworkData>(
+
+/// Phase 1: ... ?
+pub(crate) fn phase_1<N: Send + Sync, E: Send + Sync + Distanceable>(
     size: usize,
-    network: &DirectedNetworkGraph<D>,
-) -> IntermediateNetwork {
+    mut network: HighwayGraph<N, E>,
+) -> HighwayGraph<N, E> {
     println!("Start computing (forward backward)");
 
-    let (duration, computed) = stopwatch!(ComputedState::new(size, network));
+    let (duration, computed) = stopwatch!(ComputedState::new(size, &network));
 
     println!(
-        "Finished computing (forward backward) {}ms",
+        "Finished computing (forward + backward) {}ms",
         duration.as_millis()
     );
     println!(
         "Start computing (edges collections: {})",
-        network.edges().len()
+        network.edge_count()
     );
 
     let edges = network
-        .nodes()
-        .par_iter()
-        .enumerate()
-        .flat_map_iter(|(id, _)| dijkstra::calculate_edges(id.into(), &computed, network))
+        .node_indices()
+        .par_bridge()
+        .flat_map_iter(|id| dijkstra::calculate_edges(id, &computed, &network))
         .collect::<HashSet<_>>();
 
-    let edges = edges
-        .into_iter()
-        .map(|(source, edge_id)| {
-            let edge = network.edge(edge_id);
-            IntermediateEdge::new(
-                source,
-                edge.target(),
-                edge.distance(),
-                ShortcutState::Single(edge.edge_id),
-                network.data.edge_road_id(edge_id),
-                network::builder::EdgeDirection::Forward,
-            )
-        })
-        .collect();
+    network.retain_edges(|_, e| edges.contains(&e));
+
     println!("Finished computing (edges collections)");
 
-    edges
+    network
 }
 
 /**
  * Calculate the core network
  */
-fn phase_2(intermediate: IntermediateNetwork, contraction_factor: f32) -> IntermediateNetwork {
+fn phase_2<N, E>(
+    intermediate: HighwayGraph<N, E>,
+    contraction_factor: f32,
+) -> HighwayGraph<N, Shorted>
+where
+    N: Clone,
+    E: Distanceable,
+{
     core::core_network_with_patch(intermediate, contraction_factor)
 }
 
@@ -111,7 +111,10 @@ pub struct ComputedState {
 }
 
 impl ComputedState {
-    pub fn new<D: NetworkData>(size: usize, network: &DirectedNetworkGraph<D>) -> Self {
+    pub fn new<N: Send + Sync, E: Send + Sync + Distanceable>(
+        size: usize,
+        network: &HighwayGraph<N, E>,
+    ) -> Self {
         let (forward, backward) = rayon::join(
             || ForwardNeighbourhood::from_network(size, network),
             || BackwardNeighbourhood::from_network(size, network),

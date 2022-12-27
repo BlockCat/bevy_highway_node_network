@@ -5,7 +5,7 @@ pub mod iterators;
 pub mod neighbourhood;
 
 pub use neighbourhood::*;
-use petgraph::adj::EdgeIndex;
+use petgraph::stable_graph::EdgeIndex;
 use petgraph::stable_graph::IndexType;
 use petgraph::stable_graph::NodeIndex;
 use petgraph::stable_graph::StableDiGraph;
@@ -32,21 +32,6 @@ unsafe impl IndexType for HighwayIndex {
 
     fn max() -> Self {
         HighwayIndex(usize::MAX)
-    }
-}
-
-#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
-pub enum ShortcutState<T> {
-    Single(T),
-    Shortcut(Vec<T>),
-}
-
-impl<T> From<ShortcutState<T>> for Vec<T> {
-    fn from(s: ShortcutState<T>) -> Self {
-        match s {
-            ShortcutState::Single(a) => vec![a],
-            ShortcutState::Shortcut(a) => a,
-        }
     }
 }
 

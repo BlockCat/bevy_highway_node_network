@@ -7,10 +7,10 @@ use bevy::{
     tasks::{AsyncComputeTaskPool, Task},
 };
 use bevy_egui::{egui, EguiContext};
-use bevy_shapefile::RoadId;
+use bevy_shapefile::{JunctionId, RoadId};
 use futures_lite::future;
-use highway::generation::intermediate_network::IntermediateData;
-use network::{DirectedNetworkGraph, EdgeId, NetworkData};
+use highway::generation::core::Shorted;
+use network::HighwayGraph;
 use std::{collections::HashMap, path::Path};
 
 use super::DirectedNetworkGraphContainer;
@@ -70,9 +70,9 @@ pub fn gui_system(
 fn load_or_calculate<P: AsRef<Path>, F>(
     path: P,
     calculate: F,
-) -> DirectedNetworkGraph<IntermediateData>
+) -> HighwayGraph<(JunctionId, Vec2), Shorted>
 where
-    F: Fn() -> DirectedNetworkGraph<IntermediateData>,
+    F: Fn() -> HighwayGraph<(JunctionId, Vec2), Shorted>,
 {
     if let Ok(network) = crate::read_file(&path) {
         network
@@ -177,12 +177,12 @@ pub fn colouring_system(
 #[derive(Resource)]
 pub struct PreProcess {
     pub base: NwbGraph,
-    pub layers: Vec<DirectedNetworkGraph<IntermediateData>>,
+    pub layers: Vec<HighwayGraph<(JunctionId, Vec2), Shorted>>,
     pub road_data_level: HashMap<RoadId, u8>,
 }
 
 impl PreProcess {
-    pub fn new(base: NwbGraph, layers: Vec<DirectedNetworkGraph<IntermediateData>>) -> Self {
+    pub fn new(base: NwbGraph, layers: Vec<HighwayGraph<(JunctionId, Vec2), Shorted>>) -> Self {
         unimplemented!("Could not create preprocess")
 
         // let mut road_data_level = (0..base.edges().len())
@@ -206,26 +206,27 @@ impl PreProcess {
     }
 }
 
-fn process_edges<A: NetworkData>(
-    layer_id: u8,
-    network: &DirectedNetworkGraph<A>,
-    road_data: &mut HashMap<RoadId, u8>,
-) {
-    for id in 0..network.edges().len() {
-        let id = EdgeId::from(id);
-        match network.data.edge_road_id(id) {
-            network::ShortcutState::Single(a) => {
-                road_data.entry(RoadId::from(a)).and_modify(|f| {
-                    *f = layer_id;
-                });
-            }
-            network::ShortcutState::Shortcut(b) => {
-                for a in b {
-                    road_data.entry(RoadId::from(a)).and_modify(|f| {
-                        *f = layer_id;
-                    });
-                }
-            }
-        }
-    }
-}
+// Finds the highest layer of roads
+// fn process_edges(
+//     layer_id: u8,
+//     network: &DirectedNetworkGraph<A>,
+//     road_data: &mut HashMap<RoadId, u8>,
+// ) {
+//     for id in 0..network.edges().len() {
+//         let id = EdgeId::from(id);
+//         match network.data.edge_road_id(id) {
+//             network::ShortcutState::Single(a) => {
+//                 road_data.entry(RoadId::from(a)).and_modify(|f| {
+//                     *f = layer_id;
+//                 });
+//             }
+//             network::ShortcutState::Shortcut(b) => {
+//                 for a in b {
+//                     road_data.entry(RoadId::from(a)).and_modify(|f| {
+//                         *f = layer_id;
+//                     });
+//                 }
+//             }
+//         }
+//     }
+// }

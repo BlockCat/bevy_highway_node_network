@@ -45,7 +45,6 @@ impl RoadMap {
 
     pub fn read<P: AsRef<Path>>(path: P) -> Self {
         let file = File::open(path).expect("Could not open file");
-        
 
         bincode::deserialize_from(file).expect("Could not deserialize")
     }
@@ -53,8 +52,7 @@ impl RoadMap {
     /// Load data from a shapefile
     pub fn from_shapefile<P: AsRef<Path>>(path: P) -> Result<Self, ShapeError> {
         println!("Start read of road data");
-        let roads =
-            shapefile::read_as::<P, Polyline, Record>(path).map_err(ShapeError::Shape)?;
+        let roads = shapefile::read_as::<P, Polyline, Record>(path).map_err(ShapeError::Shape)?;
 
         println!("Loading junction data");
         let junctions = load_junctions(&roads);
@@ -153,6 +151,7 @@ fn load_road_sections(
                 Vec3::new(bbox.x_range()[0] as f32, bbox.y_range()[0] as f32, 0.0),
                 Vec3::new(bbox.x_range()[1] as f32, bbox.y_range()[1] as f32, 0.0),
             );
+
             let id = RoadId::from(id);
 
             (id, RoadSection { id, points, aabb })

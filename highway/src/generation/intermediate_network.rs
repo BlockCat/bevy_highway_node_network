@@ -1,7 +1,4 @@
-use network::{
-    builder::{DirectedNetworkBuilder, EdgeBuilder, EdgeDirection, NodeBuilder},
-    DirectedNetworkGraph, EdgeId, NetworkData, NodeId, ShortcutState,
-};
+use network::ShortcutState;
 use rayon::iter::{FromParallelIterator, ParallelIterator};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
