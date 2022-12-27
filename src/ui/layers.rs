@@ -104,10 +104,10 @@ pub fn handle_preprocess_task(
 }
 
 fn clicked_preprocess(
-    base: NwbGraph,
+    _base: NwbGraph,
     layer_count: usize,
-    neighbourhood: usize,
-    contraction_factor: f32,
+    _neighbourhood: usize,
+    _contraction_factor: f32,
 ) -> PreProcess {
     println!("Clicked: {layer_count}");
 
@@ -182,7 +182,7 @@ pub struct PreProcess {
 }
 
 impl PreProcess {
-    pub fn new(base: NwbGraph, layers: Vec<HighwayGraph<(JunctionId, Vec2), Shorted>>) -> Self {
+    pub fn new(_base: NwbGraph, _layers: Vec<HighwayGraph<(JunctionId, Vec2), Shorted>>) -> Self {
         unimplemented!("Could not create preprocess")
 
         // let mut road_data_level = (0..base.edges().len())

@@ -3,8 +3,8 @@ use std::path::Path;
 use rusqlite::{params, Connection, Transaction};
 use shapefile::dbase::{FieldValue, Record};
 
-const CREATE_TABLE_SQL: &'static str = include_str!("create_table.sql");
-const INSERT_SQL: &'static str = include_str!("insert.sql");
+const CREATE_TABLE_SQL: &str = include_str!("create_table.sql");
+const INSERT_SQL: &str = include_str!("insert.sql");
 
 fn main() {
     let mut connection = Connection::open("database.db").expect("Could not create database");
@@ -88,7 +88,7 @@ fn get_float(record: &Record, name: &str) -> Option<f64> {
     let value = record.get(name).unwrap();
 
     if let FieldValue::Numeric(x) = value {
-        return x.clone();
+        return *x;
     }
     unreachable!();
 }

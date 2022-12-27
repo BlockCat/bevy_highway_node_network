@@ -40,15 +40,12 @@ impl PartialOrd for IteratorHeapEntry {
 }
 
 pub trait DijkstraIterator<N, E> {
-    fn forward_iterator<'a>(&'a self, node: HighwayNodeIndex) -> ForwardDijkstraIterator<'a, N, E>;
-    fn backward_iterator<'a>(
-        &'a self,
-        node: HighwayNodeIndex,
-    ) -> BackwardDijkstraIterator<'a, N, E>;
+    fn forward_iterator(&self, node: HighwayNodeIndex) -> ForwardDijkstraIterator<'_, N, E>;
+    fn backward_iterator(&self, node: HighwayNodeIndex) -> BackwardDijkstraIterator<'_, N, E>;
 }
 
 impl<N, E> DijkstraIterator<N, E> for HighwayGraph<N, E> {
-    fn forward_iterator<'a>(&'a self, node: HighwayNodeIndex) -> ForwardDijkstraIterator<'a, N, E> {
+    fn forward_iterator(&self, node: HighwayNodeIndex) -> ForwardDijkstraIterator<'_, N, E> {
         let mut heap = BinaryHeap::new();
         heap.push(IteratorHeapEntry {
             distance: 0.0,
@@ -62,10 +59,7 @@ impl<N, E> DijkstraIterator<N, E> for HighwayGraph<N, E> {
         }
     }
 
-    fn backward_iterator<'a>(
-        &'a self,
-        node: HighwayNodeIndex,
-    ) -> BackwardDijkstraIterator<'a, N, E> {
+    fn backward_iterator(&self, node: HighwayNodeIndex) -> BackwardDijkstraIterator<'_, N, E> {
         let mut heap = BinaryHeap::new();
         heap.push(IteratorHeapEntry {
             distance: 0.0,

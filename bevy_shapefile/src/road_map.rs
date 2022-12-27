@@ -27,6 +27,18 @@ pub struct RoadMap {
     pub road_spatial: rstar::RTree<RoadSpatialIndex, Params>,
 }
 
+impl RoadMap {
+    pub fn road_length(&self, road_id: RoadId) -> f32 {
+        let section = &self.roads[&road_id];
+
+        section
+            .points
+            .windows(2)
+            .map(|points| points[0].distance(points[1]))
+            .sum()
+    }
+}
+
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Params;
 

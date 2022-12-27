@@ -292,7 +292,6 @@ fn spawn_figure(
             .iter()
             .map(|c| Vec3::new(c.x, c.y, 0.0))
             .collect(),
-        ..Default::default()
     });
     commands
         .spawn(PolylineBundle {

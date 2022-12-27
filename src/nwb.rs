@@ -46,7 +46,7 @@ pub fn preprocess_roadmap<P: AsRef<Path>>(roadmap: &RoadMap, database: P) -> Nwb
         })
         .collect::<HashMap<_, _>>();
 
-    for (&road_id, _) in roads {
+    for &road_id in roads.keys() {
         let (road_id_start, road_id_end, rij_richting) = statement[&road_id];
 
         let source = junction_to_node[&road_id_start];

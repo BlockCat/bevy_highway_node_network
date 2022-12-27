@@ -103,12 +103,7 @@ impl<T: Hash + Eq + Copy> HashNodeQueue<T> {
 
         HashNodeQueue { queue, seen }
     }
-    fn from_vec(items: &[T]) -> Self {
-        let queue = VecDeque::from_iter(items.iter().cloned());
-        let seen = HashSet::from_iter(items.iter().cloned());
 
-        HashNodeQueue { queue, seen }
-    }
     fn contains(&self, value: &T) -> bool {
         self.seen.contains(value)
     }

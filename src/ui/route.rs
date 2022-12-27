@@ -42,11 +42,11 @@ pub fn gui_system(mut egui_context: ResMut<EguiContext>, mut state: ResMut<Route
 
         let n1 = state
             .node_1
-            .map(|x| format!("Node: {:?}", x))
+            .map(|x| format!("Node: {x:?}"))
             .unwrap_or("Node: none".into());
         let n2 = state
             .node_1
-            .map(|x| format!("Node: {:?}", x))
+            .map(|x| format!("Node: {x:?}"))
             .unwrap_or("Node: none".into());
 
         ui.label(n1);

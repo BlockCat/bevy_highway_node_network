@@ -2,7 +2,7 @@ use bevy_dutch_road_highway_node_network::{nwb::NwbGraph, read_file, write_file}
 use bevy_shapefile::{RoadId, RoadMap};
 use highway::generation::calculate_layer;
 use network::{iterators::Distanceable, HighwayGraph};
-use petgraph::stable_graph::StableDiGraph;
+
 use rayon::join;
 
 #[derive(Debug, Clone)]
@@ -27,9 +27,9 @@ fn main() {
     );
 
     let network = network.map(
-        |_, n| n.clone(),
+        |_, n| *n,
         |_, e| {
-            let distance = 0.0f32;
+            let distance = road_map.road_length(*e);
             RoadWeight(*e, distance)
         },
     );
@@ -37,7 +37,7 @@ fn main() {
     let mut layers = vec![calculate_layer(30, network.clone(), 2.0)];
 
     if let Some(x) = layers.first() {
-        write_file(x, "data/0.graph".to_string()).expect("Could not write");
+        write_file(x, "data/0.graph").expect("Could not write");
     }
 
     for i in 1..7 {

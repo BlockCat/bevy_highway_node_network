@@ -55,9 +55,9 @@ where
     E: Send + Sync + Distanceable,
 {
     let phase_1_graph = phase_1(size, network);
-    let phase_2_graph = phase_2(phase_1_graph, contraction_factor);
+    
 
-    phase_2_graph
+    phase_2(phase_1_graph, contraction_factor)
 }
 
 /// Phase 1: ... ?
