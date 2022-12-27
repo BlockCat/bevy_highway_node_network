@@ -1,48 +1,49 @@
-use bevy_dutch_road_highway_node_network::{nwb::NWBNetworkData, read_file, write_file};
+use bevy_dutch_road_highway_node_network::{nwb::NwbGraph, read_file, write_file};
 use highway::generation::calculate_layer;
 use network::{DirectedNetworkGraph, NetworkData};
 
 fn main() {
-    let network: DirectedNetworkGraph<NWBNetworkData> =
-        read_file("data/directed_graph.graph").unwrap();
+    let network: NwbGraph = read_file("data/directed_graph.graph").unwrap();
 
     println!(
         "Layer: 0 - n: {}, e: {} ",
-        network.nodes().len(),
-        network.edges().len()
+        network.node_count(),
+        network.edge_count()
     );
 
-    let mut layers = vec![calculate_layer(30, &network, 2.0)];
+    unimplemented!("Disabled");
 
-    if let Some(x) = layers.first() {
-        write_file(x, "data/0.graph".to_string()).expect("Could not write");
-    }
+    // let mut layers = vec![calculate_layer(30, &network, 2.0)];
 
-    for i in 1..7 {
-        let prev_layer = layers.last().unwrap();
-        println!(
-            "Layer: {} - n: {}, e: {} ",
-            i,
-            prev_layer.nodes().len(),
-            prev_layer.edges().len()
-        );
-        let next = calculate_layer(30, prev_layer, 3.0);
+    // if let Some(x) = layers.first() {
+    //     write_file(x, "data/0.graph".to_string()).expect("Could not write");
+    // }
 
-        write_file(&next, format!("data/{i}.graph")).expect("Could not write");
-        layers.push(next);
-    }
+    // for i in 1..7 {
+    //     let prev_layer = layers.last().unwrap();
+    //     println!(
+    //         "Layer: {} - n: {}, e: {} ",
+    //         i,
+    //         prev_layer.nodes().len(),
+    //         prev_layer.edges().len()
+    //     );
+    //     let next = calculate_layer(30, prev_layer, 3.0);
 
-    data(0, 1, &network, &layers[0]);
+    //     write_file(&next, format!("data/{i}.graph")).expect("Could not write");
+    //     layers.push(next);
+    // }
 
-    let mut counter = 0;
+    // data(0, 1, &network, &layers[0]);
 
-    for layer in layers.windows(2) {
-        counter += 1;
-        let l1 = &layer[0];
-        let l2 = &layer[1];
+    // let mut counter = 0;
 
-        data(counter, counter + 1, l1, l2);
-    }
+    // for layer in layers.windows(2) {
+    //     counter += 1;
+    //     let l1 = &layer[0];
+    //     let l2 = &layer[1];
+
+    //     data(counter, counter + 1, l1, l2);
+    // }
 }
 
 fn data<A: NetworkData, B: NetworkData>(

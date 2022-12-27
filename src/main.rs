@@ -26,7 +26,7 @@ fn main() {
         .add_plugin(WorldPlugin {
             config: WorldConfig {
                 database_path: "data/database.db".into(),
-                shapefile_path: "data/01-03-2022/Wegvakken/Wegvakken.shp".into(),
+                shapefile_path: "data/01-12-2022/Wegvakken/Wegvakken.shp".into(),
                 road_map_path: "data/road_map.data".into(),
                 directed_graph_path: "data/directed_graph.graph".into(),
 

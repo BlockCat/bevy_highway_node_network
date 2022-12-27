@@ -21,7 +21,7 @@ fn main() {
         .transaction()
         .expect("Could not start transaction");
 
-    execute_transaction("data/01-03-2022/Wegvakken/Wegvakken.shp", &transaction);
+    execute_transaction("data/01-12-2022/Wegvakken/Wegvakken.shp", &transaction);
 
     println!("Start committing");
 

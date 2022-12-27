@@ -6,7 +6,6 @@ use crate::{
 use bevy::prelude::*;
 use bevy_polyline::prelude::{Polyline, PolylineBundle, PolylineMaterial};
 use bevy_shapefile::{RoadId, RoadMap, RoadSection, AABB};
-use network::DirectedNetworkGraph;
 use std::{
     collections::{HashMap, HashSet},
     path::Path,

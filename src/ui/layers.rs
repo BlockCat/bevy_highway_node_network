@@ -1,7 +1,5 @@
-use std::{collections::HashMap, path::Path};
-
 use crate::{
-    nwb::{NWBNetworkData, NwbGraph},
+    nwb::NwbGraph,
     world::{WorldEntity, WorldEntitySelectionType},
 };
 use bevy::{
@@ -13,6 +11,7 @@ use bevy_shapefile::RoadId;
 use futures_lite::future;
 use highway::generation::intermediate_network::IntermediateData;
 use network::{DirectedNetworkGraph, EdgeId, NetworkData};
+use std::{collections::HashMap, path::Path};
 
 use super::DirectedNetworkGraphContainer;
 
@@ -112,9 +111,7 @@ fn clicked_preprocess(
 ) -> PreProcess {
     println!("Clicked: {layer_count}");
 
-    
-    unimplemented!("Preprocess disabled")
-    
+    unimplemented!("Preprocessing is disabled while implementing petgraph");
     // let mut layers = Vec::new();
     // layers.push(load_or_calculate("data/layer_0.graph", || {
     //     highway::generation::calculate_layer(neighbourhood, &base, contraction_factor)
@@ -179,34 +176,33 @@ pub fn colouring_system(
 
 #[derive(Resource)]
 pub struct PreProcess {
-    pub base: DirectedNetworkGraph<NWBNetworkData>,
+    pub base: NwbGraph,
     pub layers: Vec<DirectedNetworkGraph<IntermediateData>>,
     pub road_data_level: HashMap<RoadId, u8>,
 }
 
 impl PreProcess {
-    pub fn new(
-        base: DirectedNetworkGraph<NWBNetworkData>,
-        layers: Vec<DirectedNetworkGraph<IntermediateData>>,
-    ) -> Self {
-        let mut road_data_level = (0..base.edges().len())
-            .map(EdgeId::from)
-            .flat_map(|id| Vec::from(base.data.edge_road_id(id)))
-            .map(|x| (RoadId::from(x), 0))
-            .collect::<HashMap<_, _>>();
+    pub fn new(base: NwbGraph, layers: Vec<DirectedNetworkGraph<IntermediateData>>) -> Self {
+        unimplemented!("Could not create preprocess")
 
-        println!("Base line of: {}", road_data_level.len());
-        // process_edges(0, &base, &mut road_data_level);
+        // let mut road_data_level = (0..base.edges().len())
+        //     .map(EdgeId::from)
+        //     .flat_map(|id| Vec::from(base.data.edge_road_id(id)))
+        //     .map(|x| (RoadId::from(x), 0))
+        //     .collect::<HashMap<_, _>>();
 
-        for (layer_id, layer) in layers.iter().enumerate() {
-            process_edges(layer_id as u8 + 1, layer, &mut road_data_level);
-        }
+        // println!("Base line of: {}", road_data_level.len());
+        // // process_edges(0, &base, &mut road_data_level);
 
-        PreProcess {
-            base,
-            layers,
-            road_data_level,
-        }
+        // for (layer_id, layer) in layers.iter().enumerate() {
+        //     process_edges(layer_id as u8 + 1, layer, &mut road_data_level);
+        // }
+
+        // PreProcess {
+        //     base,
+        //     layers,
+        //     road_data_level,
+        // }
     }
 }
 
