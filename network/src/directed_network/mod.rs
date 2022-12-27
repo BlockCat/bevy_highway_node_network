@@ -1,15 +1,3 @@
-use self::{
-    builder::EdgeDirection,
-    iterators::{BackwardDijkstraIterator, EdgeIterator, ForwardDijkstraIterator, F32},
-};
-use crate::{BackwardNeighbourhood, EdgeId, ForwardNeighbourhood, NodeId};
-pub use node_data::NetworkData;
-use serde::{Deserialize, Serialize};
-use std::{
-    cmp::Reverse,
-    collections::{BinaryHeap, HashSet},
-};
-
 pub mod builder;
 pub mod iterators;
 pub mod node_data;
@@ -134,7 +122,7 @@ impl<D: NetworkData> DirectedNetworkGraph<D> {
         self.create_iterator_raw(node, EdgeDirection::Backward)
     }
 
-
+    /// Collect the nodes in order of lowest to highest distance
     pub fn forward_iterator(&self, node: NodeId) -> ForwardDijkstraIterator<'_, D> {
         let mut heap = BinaryHeap::new();
         heap.push(Reverse((F32(0.0), node)));

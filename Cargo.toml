@@ -28,10 +28,6 @@ rayon = "1.5.1"
 [dev-dependencies]
 criterion = "0.4.0"
 
-[[bench]]
-harness = false
-name = "phase_1_benchmark"
-
 [profile.dev.package.bevy_shapefile]
 opt-level = 3
 

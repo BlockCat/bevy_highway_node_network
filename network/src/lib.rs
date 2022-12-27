@@ -1,65 +1,37 @@
 #![feature(map_try_insert)]
 #![feature(is_sorted)]
 
-use std::ops::Deref;
-
-pub use directed_network::*;
-pub use neighbourhood::*;
-
-pub mod directed_network;
-// pub mod highway;
-pub mod highway_network;
+pub mod iterators;
 pub mod neighbourhood;
 
-// pub use highway::intermediate_network;
-
-// pub use highway::calculate_layer;
+pub use neighbourhood::*;
+use petgraph::adj::EdgeIndex;
+use petgraph::stable_graph::IndexType;
+use petgraph::stable_graph::NodeIndex;
+use petgraph::stable_graph::StableDiGraph;
 use serde::Deserialize;
 use serde::Serialize;
 
-#[derive(Debug, Clone, Copy, Hash, PartialEq, PartialOrd, Eq, Ord, Serialize, Deserialize)]
-pub struct NodeId(pub u32);
+#[derive(
+    Debug, Clone, Copy, Hash, PartialEq, Eq, PartialOrd, Ord, Default, Serialize, Deserialize,
+)]
+pub struct HighwayIndex(usize);
 
-impl From<usize> for NodeId {
-    fn from(id: usize) -> Self {
-        Self(id as u32)
+pub type HighwayGraph<N, E> = StableDiGraph<N, E, HighwayIndex>;
+pub type HighwayNodeIndex = NodeIndex<HighwayIndex>;
+pub type HighwayEdgeIndex = EdgeIndex<HighwayIndex>;
+
+unsafe impl IndexType for HighwayIndex {
+    fn new(x: usize) -> Self {
+        Self(x)
     }
-}
 
-impl Deref for NodeId {
-    type Target = u32;
-
-    fn deref(&self) -> &Self::Target {
-        &self.0
+    fn index(&self) -> usize {
+        self.0
     }
-}
 
-#[derive(Debug, Clone, Copy, Hash, PartialEq, PartialOrd, Eq, Ord, Serialize, Deserialize)]
-pub struct EdgeId(pub u32);
-
-impl From<usize> for EdgeId {
-    fn from(id: usize) -> Self {
-        Self(id as u32)
-    }
-}
-
-impl From<u32> for EdgeId {
-    fn from(id: u32) -> Self {
-        Self(id)
-    }
-}
-
-impl Deref for EdgeId {
-    type Target = u32;
-
-    fn deref(&self) -> &Self::Target {
-        &(self.0)
-    }
-}
-
-impl From<u32> for NodeId {
-    fn from(id: u32) -> Self {
-        Self(id)
+    fn max() -> Self {
+        HighwayIndex(usize::MAX)
     }
 }
 
@@ -80,28 +52,3 @@ impl<T> From<ShortcutState<T>> for Vec<T> {
 
 #[cfg(test)]
 pub(crate) mod tests;
-
-#[macro_export]
-macro_rules! create_network {
-    ($s:literal..$e:literal, $($a:literal => $b:literal; $c: expr),+) => {
-    {
-        use $crate::builder::DefaultEdgeBuilder;
-        use $crate::builder::DirectedNetworkBuilder;
-        let mut builder = DirectedNetworkBuilder::<usize, DefaultEdgeBuilder>::new();
-
-        for x in $s..=$e {
-            builder.add_node(x);
-        }
-
-        $({
-            let source = builder.add_node($a);
-            let target = builder.add_node($b);
-
-            builder.add_edge(DefaultEdgeBuilder::forward(source, target, 0, $c));
-
-        })+
-
-        builder.build::<()>()
-    }
-    };
-}
