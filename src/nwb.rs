@@ -75,6 +75,10 @@ impl NodeBuilder for RoadNode {
     fn data(&self) -> Self::Data {
         (self.junction_id, self.location.clone())
     }
+
+    fn id(&self) -> u32 {
+        self.junction_id as u32
+    }
 }
 
 #[derive(Debug, Clone)]

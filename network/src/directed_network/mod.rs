@@ -16,13 +16,15 @@ pub mod node_data;
 
 #[derive(Debug, PartialEq, Eq, Clone, Serialize, Deserialize)]
 pub struct NetworkNode {
-    start_edge_index: u32,
-    last_edge_index: u32,
+    pub id: u32,
+    pub start_edge_index: u32,
+    pub last_edge_index: u32,
 }
 
 impl NetworkNode {
-    pub fn new(start_edge_index: u32, last_edge_index: u32) -> Self {
+    pub fn new(id: u32, start_edge_index: u32, last_edge_index: u32) -> Self {
         Self {
+            id,
             start_edge_index,
             last_edge_index,
         }
@@ -131,6 +133,7 @@ impl<D: NetworkData> DirectedNetworkGraph<D> {
     pub fn in_edges_raw(&self, node: &NetworkNode) -> EdgeIterator {
         self.create_iterator_raw(node, EdgeDirection::Backward)
     }
+
 
     pub fn forward_iterator(&self, node: NodeId) -> ForwardDijkstraIterator<'_, D> {
         let mut heap = BinaryHeap::new();

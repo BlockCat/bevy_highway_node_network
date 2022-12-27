@@ -24,12 +24,16 @@ impl Neg for EdgeDirection {
 pub trait NodeBuilder: Hash + PartialEq + Eq {
     type Data: Clone;
 
+    fn id(&self) -> u32;
     fn data(&self) -> Self::Data;
 }
 
 impl NodeBuilder for usize {
     type Data = ();
 
+    fn id(&self) -> u32 {
+        *self as u32
+    }
     fn data(&self) -> Self::Data {
         ()
     }
@@ -40,6 +44,10 @@ pub struct DefaultNodeBuilder(pub NodeId);
 
 impl NodeBuilder for DefaultNodeBuilder {
     type Data = ();
+
+    fn id(&self) -> u32 {
+        self.0 .0
+    }
 
     fn data(&self) -> Self::Data {
         ()
@@ -145,8 +153,7 @@ impl<V: NodeBuilder, E: EdgeBuilder> DirectedNetworkBuilder<V, E> {
         let mut map = HashMap::<NodeId, Vec<&E>>::new();
 
         for (_, edge) in &self.edges {
-            let source_to_target = map.entry(edge.source()).or_default().push(edge);
-
+            map.entry(edge.source()).or_default().push(edge);
             map.entry(edge.target()).or_default().push(edge);
         }
 
@@ -171,7 +178,7 @@ impl<V: NodeBuilder, E: EdgeBuilder> DirectedNetworkBuilder<V, E> {
 
             let last_edge_index = edges.len() as u32;
 
-            let network_node = NetworkNode::new(start_edge_index, last_edge_index);
+            let network_node = NetworkNode::new(node.id(), start_edge_index, last_edge_index);
 
             nodes.push(network_node);
         }

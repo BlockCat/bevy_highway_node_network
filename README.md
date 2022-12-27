@@ -21,7 +21,3 @@ Phase 1 generation:
 ```
 time:   [20.726 s 22.190 s 23.603 s]
 ```
-
-
-# TODO:
-Display layers in bevy.

@@ -22,6 +22,10 @@ pub struct IntermediateEdge {
 impl NodeBuilder for IntermediateNode {
     type Data = NodeId;
 
+    fn id(&self) -> u32 {
+        self.0 .0
+    }
+
     fn data(&self) -> Self::Data {
         self.0
     }
