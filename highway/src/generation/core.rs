@@ -1,7 +1,7 @@
 use itertools::Itertools;
 use network::{iterators::Distanceable, HighwayEdgeIndex, HighwayGraph, HighwayNodeIndex};
 use petgraph::visit::EdgeRef;
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 use std::{
     collections::{HashSet, VecDeque},
     hash::Hash,
@@ -9,11 +9,11 @@ use std::{
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Shorted {
-    distance: f32,
+    pub distance: f32,
     /// Points to nodes in the previous layer
-    skipped_nodes: Vec<HighwayNodeIndex>,
+    pub skipped_nodes: Vec<HighwayNodeIndex>,
     /// Points to edges in the previous layer
-    skipped_edges: Vec<HighwayEdgeIndex>,
+    pub skipped_edges: Vec<HighwayEdgeIndex>,
 }
 
 impl Distanceable for Shorted {
@@ -58,6 +58,8 @@ pub(crate) fn core_network_with_patch<N: Clone, E: Distanceable>(
             let in_edges = old_network
                 .edges_directed(node, petgraph::Direction::Incoming)
                 .collect_vec();
+
+            panic!("Need to be remove from next network. And Shorted can be combined, which is not the case right now");
 
             for source_edge in in_edges {
                 let source = source_edge.source();
