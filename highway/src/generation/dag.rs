@@ -1,10 +1,11 @@
-use network::{EdgeId, NodeId};
 use std::collections::{BinaryHeap, HashMap};
+
+use network::{HighwayEdgeIndex, HighwayNodeIndex};
 
 #[derive(Debug, PartialEq, PartialOrd)]
 pub struct ParentEntry {
-    pub parent: NodeId,
-    pub parent_edge: EdgeId,
+    pub parent: HighwayNodeIndex,
+    pub parent_edge: HighwayEdgeIndex,
     pub parent_edge_distance: f32,
     pub active: bool,
 }
@@ -12,7 +13,7 @@ pub struct ParentEntry {
 #[derive(Debug, PartialEq)]
 pub struct DijkstraNodeState {
     pub distance: f32,
-    pub current: NodeId,
+    pub current: HighwayNodeIndex,
     pub parent: ParentEntry,
 }
 
@@ -47,18 +48,18 @@ pub struct VisitedState {
     pub border_distance: f32,
     pub reference_distance: f32,
     pub distance: f32,
-    pub parents: HashMap<NodeId, (Option<EdgeId>, f32)>,
+    pub parents: HashMap<HighwayNodeIndex, (Option<HighwayEdgeIndex>, f32)>,
 }
 
 pub struct HighwayNodeQueue {
     pub heap: BinaryHeap<DijkstraNodeState>,
-    pub visited: HashMap<NodeId, VisitedState>,
+    pub visited: HashMap<HighwayNodeIndex, VisitedState>,
     active: usize,
 }
 
 pub struct HighwayQueueEntry {
     pub state: DijkstraNodeState,
-    pub parents: HashMap<NodeId, (Option<EdgeId>, f32)>,
+    pub parents: HashMap<HighwayNodeIndex, (Option<HighwayEdgeIndex>, f32)>,
     pub border_distance: f32,
     pub reference_distance: f32,
     pub parent_active: bool,
@@ -146,7 +147,7 @@ impl HighwayNodeQueue {
         None
     }
 
-    pub fn visited(&mut self, node: NodeId, state: VisitedState) -> Option<VisitedState> {
+    pub fn visited(&mut self, node: HighwayNodeIndex, state: VisitedState) -> Option<VisitedState> {
         self.visited.insert(node, state)
     }
 

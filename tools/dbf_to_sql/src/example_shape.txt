@@ -1,0 +1,224 @@
+Record {
+    map: {
+        "ROUTELTR3": Character(
+            None,
+        ),
+        "WEGBEHSRT": Character(
+            Some(
+                "G",
+            ),
+        ),
+        "ROUTELTR": Character(
+            None,
+        ),
+        "ROUTENR4": Numeric(
+            None,
+        ),
+        "ROUTELTR4": Character(
+            None,
+        ),
+        "WEGNR_HMP": Character(
+            None,
+        ),
+        "HNRSTRLNKS": Character(
+            None,
+        ),
+        "WEGNR_AW": Character(
+            None,
+        ),
+        "WVK_ID": Numeric(
+            Some(
+                57172163.0,
+            ),
+        ),
+        "DISTRCODE": Numeric(
+            Some(
+                0.0,
+            ),
+        ),
+        "GEOBRON_ID": Numeric(
+            Some(
+                10.0,
+            ),
+        ),
+        "GME_NAAM": Character(
+            Some(
+                "Vlissingen",
+            ),
+        ),
+        "ROUTENR2": Numeric(
+            None,
+        ),
+        "GEOBRON_NM": Character(
+            Some(
+                "Hartlijnenbestand Topografische Dienst",
+            ),
+        ),
+        "BAG_ORL": Character(
+            Some(
+                "0718300000000716",
+            ),
+        ),
+        "JTE_ID_BEG": Numeric(
+            Some(
+                57172170.0,
+            ),
+        ),
+        "FRC": Character(
+            Some(
+                "6",
+            ),
+        ),
+        "HECTO_LTTR": Character(
+            Some(
+                "#",
+            ),
+        ),
+        "WVK_BEGDAT": Date(
+            Some(
+                Date {
+                    year: 1998,
+                    month: 1,
+                    day: 22,
+                },
+            ),
+        ),
+        "JTE_ID_END": Numeric(
+            Some(
+                57172171.0,
+            ),
+        ),
+        "RPE_CODE": Character(
+            Some(
+                "#",
+            ),
+        ),
+        "L_HNR_LNKS": Numeric(
+            None,
+        ),
+        "REL_HOOGTE": Numeric(
+            None,
+        ),
+        "HNRSTRRHTS": Character(
+            None,
+        ),
+        "BEGINKM": Numeric(
+            None,
+        ),
+        "E_HNR_LNKS": Numeric(
+            None,
+        ),
+        "BEGAFSTAND": Numeric(
+            None,
+        ),
+        "RIJRICHTNG": Character(
+            Some(
+                "B",
+            ),
+        ),
+        "ADMRICHTNG": Character(
+            None,
+        ),
+        "EINDKM": Numeric(
+            None,
+        ),
+        "FOW": Character(
+            Some(
+                "3",
+            ),
+        ),
+        "WEGTYPE": Character(
+            None,
+        ),
+        "BRONJAAR": Numeric(
+            Some(
+                1996.0,
+            ),
+        ),
+        "ALT_NAAM": Character(
+            None,
+        ),
+        "POS_TV_WOL": Character(
+            None,
+        ),
+        "DIENSTNAAM": Character(
+            None,
+        ),
+        "L_HNR_RHTS": Numeric(
+            None,
+        ),
+        "WEGBEHCODE": Character(
+            Some(
+                "718",
+            ),
+        ),
+        "WEGBEHNAAM": Character(
+            Some(
+                "Vlissingen",
+            ),
+        ),
+        "WGTYPE_OMS": Character(
+            None,
+        ),
+        "ROUTENR": Numeric(
+            None,
+        ),
+        "ROUTELTR2": Character(
+            None,
+        ),
+        "WPSNAAM": Character(
+            Some(
+                "Vlissingen",
+            ),
+        ),
+        "WEGDEELLTR": Character(
+            Some(
+                "#",
+            ),
+        ),
+        "ENDAFSTAND": Numeric(
+            None,
+        ),
+        "ROUTENR3": Numeric(
+            None,
+        ),
+        "DIENSTCODE": Character(
+            None,
+        ),
+        "OPENLR": Character(
+            Some(
+                "CwKKUCSWBTPOAAAG//YzHg==",
+            ),
+        ),
+        "STT_NAAM": Character(
+            Some(
+                "Scheldestraat",
+            ),
+        ),
+        "ALT_NR": Character(
+            None,
+        ),
+        "GME_ID": Numeric(
+            Some(
+                718.0,
+            ),
+        ),
+        "E_HNR_RHTS": Numeric(
+            None,
+        ),
+        "STT_BRON": Character(
+            Some(
+                "BAG schrijfwijze",
+            ),
+        ),
+        "BST_CODE": Character(
+            None,
+        ),
+        "WEGNUMMER": Character(
+            None,
+        ),
+        "DISTRNAAM": Character(
+            None,
+        ),
+    },
+}

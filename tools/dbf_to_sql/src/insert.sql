@@ -12,7 +12,6 @@ INSERT INTO wegvakken
     beheerder,
 
     weg_type,
-    weg_type_oms,
     
     huisnummer_structuur_links,
     huisnummer_structuur_rechts,
@@ -29,32 +28,31 @@ INSERT INTO wegvakken
     begin_km,
     eind_km
 ) VALUES (
-    ?, 
-    ?,
+    :id,
+    :wegvak_id,
 
-    ?,
-    ?,
+    :junction_id_begin,
+    :junction_id_end,
 
-    ?,
+    :rij_richting,
 
-    ?,
-    ?,
+    :straat_naam,
+    :beheerder,
 
-    ?,
-    ?,
+    :weg_type,
     
-    ?,
-    ?,
-    
-    ?,
-    ?,
+    :huisnummer_structuur_links,
+    :huisnummer_structuur_rechts,
 
-    ?,
-    ?,
+    :eerste_huisnummer_links,
+    :eerste_huisnummer_rechts,
 
-    ?,
-    ?,
+    :laatste_huisnummer_links,
+    :laatste_huisnummer_rechts,
 
-    ?,
-    ?
+    :begin_afstand,
+    :eind_afstand,
+
+    :begin_km,
+    :eind_km
 );

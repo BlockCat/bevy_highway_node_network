@@ -46,17 +46,3 @@ pub fn read_file<T: DeserializeOwned, P: AsRef<Path>>(
 
     Ok(d)
 }
-
-struct FibonacciIterator(usize, usize);
-
-impl Iterator for FibonacciIterator {
-    type Item = usize;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        let (a, b) = (self.0, self.1);
-        self.0 = b;
-        self.1 = a + b;
-
-        Some(self.1)
-    }
-}

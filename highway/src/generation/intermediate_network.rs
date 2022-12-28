@@ -1,7 +1,4 @@
-use network::{
-    builder::{DirectedNetworkBuilder, EdgeBuilder, EdgeDirection, NodeBuilder},
-    DirectedNetworkGraph, EdgeId, NetworkData, NodeId, ShortcutState,
-};
+use network::ShortcutState;
 use rayon::iter::{FromParallelIterator, ParallelIterator};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -109,7 +106,7 @@ impl IntermediateNetwork {
         self.in_edges
             .entry(target)
             .or_default()
-            .insert(source, edge.clone());
+            .insert(source, edge);
     }
 
     pub fn remove_node(&mut self, node: NodeId) {

@@ -12,7 +12,6 @@ CREATE TABLE IF NOT EXISTS wegvakken
     beheerder TEXT, --WEGBEHNAAM
 
     weg_type TEXT, -- WEGTYPE
-    weg_type_oms TEXT, -- WGTYPE_OMS
 
     huisnummer_structuur_links CHARACTER(1), --HNRSTRLNKS
     huisnummer_structuur_rechts CHARACTER(1), --HNRSTRRHTS

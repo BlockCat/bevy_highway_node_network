@@ -1,18 +1,13 @@
 use crate::{
     camera::MainCamera,
-    nwb::{self},
+    nwb::{self, NwbGraph},
     ui::{DirectedNetworkGraphContainer, PreProcess},
 };
-use bevy::{prelude::*, tasks::AsyncComputeTaskPool};
-use bevy_polyline::{
-    prelude::{Polyline, PolylineBundle, PolylineMaterial},
-    PolylinePlugin,
-};
+use bevy::prelude::*;
+use bevy_polyline::prelude::{Polyline, PolylineBundle, PolylineMaterial};
 use bevy_shapefile::{RoadId, RoadMap, RoadSection, AABB};
-use network::DirectedNetworkGraph;
 use std::{
     collections::{HashMap, HashSet},
-    ops::Sub,
     path::Path,
 };
 
@@ -91,7 +86,7 @@ fn init_materials(
     mut polyline_materials: ResMut<Assets<PolylineMaterial>>,
 ) {
     let normal_material = polyline_materials.add(PolylineMaterial {
-        width: 1.0,
+        width: 0.2,
         color: config.normal_colour,
         perspective: true,
         ..Default::default()
@@ -137,24 +132,8 @@ fn init_road_map(config: Res<WorldConfig>, mut commands: Commands) {
     println!("Inserted resources");
 
     println!("Status:");
-    println!("Nodes: {}", network.nodes().len());
-    println!("Edges: {}", network.edges().len());
-
-    // let out = network
-    //     .nodes()
-    //     .iter()
-    //     .map(|nn| nn.out_len())
-    //     .collect::<Vec<_>>();
-
-    // println!(
-    //     "out_edges: [avg: {}, min: {}, max: {}",
-    //     out.iter().sum::<usize>() as f32 / out.len() as f32,
-    //     out.iter().min().unwrap(),
-    //     out.iter().max().unwrap()
-    // );
-
-    // let next_level_edges = network::calculate_layer(30, &network, 2.0);
-    // println!("Collected phase1 edges: {}", next_level_edges.len());
+    println!("Nodes: {}", network.node_count());
+    println!("Edges: {}", network.edge_count());
 
     commands.insert_resource(road_map);
     commands.insert_resource(DirectedNetworkGraphContainer(network));
@@ -167,7 +146,7 @@ fn load_road_map(config: &Res<WorldConfig>) -> RoadMap {
     let road_map = if let Ok(road_map) = crate::read_file(road_map_path) {
         road_map
     } else {
-        println!("File {:?} not found, creating...", road_map_path);
+        println!("File {road_map_path:?} not found, creating...");
         let road_map = bevy_shapefile::from_shapefile(&config.shapefile_path)
             .expect("Could not read shapefile");
 
@@ -178,15 +157,12 @@ fn load_road_map(config: &Res<WorldConfig>) -> RoadMap {
     road_map
 }
 
-fn load_graph(
-    config: Res<WorldConfig>,
-    road_map: &RoadMap,
-) -> DirectedNetworkGraph<nwb::NWBNetworkData> {
+fn load_graph(config: Res<WorldConfig>, road_map: &RoadMap) -> NwbGraph {
     let network_path = Path::new(&config.directed_graph_path);
-    let network = if let Ok(network) = crate::read_file(network_path) {
+    let network: NwbGraph = if let Ok(network) = crate::read_file(network_path) {
         network
     } else {
-        println!("File {:?} not found, creating...", network_path);
+        println!("File {network_path:?} not found, creating...");
         let network = nwb::preprocess_roadmap(road_map, &config.database_path);
         crate::write_file(&network, network_path).expect("Could not write network");
         network
@@ -200,10 +176,8 @@ fn mark_on_changed_preprocess(
     mut q_camera: Query<(&Camera, &GlobalTransform, &mut Transform), (With<MainCamera>,)>,
 ) {
     if let Some(preprocess) = preprocess {
-        if preprocess.is_added() {
-            if let Ok(_) = q_camera.get_single_mut() {
-                tracker.map.clear();
-            }
+        if preprocess.is_added() && q_camera.get_single_mut().is_ok() {
+            tracker.map.clear();
         }
     }
 }
@@ -285,7 +259,7 @@ fn colour_system(
 pub fn convert(pos: Vec2, transform: &GlobalTransform, camera: &Camera) -> Vec2 {
     camera
         .ndc_to_world(transform, pos.extend(0.0))
-        .unwrap()
+        .unwrap_or(Vec3::ZERO)
         .truncate()
 }
 
@@ -296,16 +270,16 @@ fn spawn_figure(
     polylines: &mut Assets<Polyline>,
     materials: &LoadedMaterials,
 ) -> Entity {
+    let polyline = polylines.add(Polyline {
+        vertices: section
+            .points
+            .iter()
+            .map(|c| Vec3::new(c.x, c.y, 0.0))
+            .collect(),
+    });
     commands
         .spawn(PolylineBundle {
-            polyline: polylines.add(Polyline {
-                vertices: section
-                    .points
-                    .iter()
-                    .map(|c| Vec3::new(c.x, c.y, 0.0))
-                    .collect(),
-                ..Default::default()
-            }),
+            polyline,
             material: materials.normal_material.clone_weak(),
             ..Default::default()
         })
