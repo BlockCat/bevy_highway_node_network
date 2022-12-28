@@ -1,8 +1,8 @@
-use network::{iterators::Distanceable, BackwardNeighbourhood, ForwardNeighbourhood, HighwayGraph};
+use network::{
+    iterators::Distanceable, BackwardNeighbourhood, ForwardNeighbourhood, HighwayGraph, Shorted,
+};
 use rayon::prelude::*;
 use std::collections::HashSet;
-
-use self::core::Shorted;
 
 pub mod core;
 pub mod dag;
@@ -55,7 +55,6 @@ where
     E: Send + Sync + Distanceable,
 {
     let phase_1_graph = phase_1(size, network);
-    
 
     phase_2(phase_1_graph, contraction_factor)
 }
@@ -83,6 +82,8 @@ pub(crate) fn phase_1<N: Send + Sync, E: Send + Sync + Distanceable>(
         .par_bridge()
         .flat_map_iter(|id| dijkstra::calculate_edges(id, &computed, &network))
         .collect::<HashSet<_>>();
+
+    println!("Got retained edges");
 
     network.retain_edges(|_, e| edges.contains(&e));
 

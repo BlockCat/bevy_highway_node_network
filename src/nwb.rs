@@ -8,8 +8,8 @@ use rusqlite::{
 use std::{collections::HashMap, path::Path};
 
 pub type NwbGraph = HighwayGraph<(JunctionId, Vec2), RoadId>;
-pub type NwbNodeIndex = HighwayNodeIndex; //NodeIndex<NwbIndex>;
-pub type NwbEdgeIndex = HighwayEdgeIndex; //EdgeIndex<NwbIndex>;
+pub type NwbNodeIndex = HighwayNodeIndex;
+pub type NwbEdgeIndex = HighwayEdgeIndex;
 
 pub fn preprocess_roadmap<P: AsRef<Path>>(roadmap: &RoadMap, database: P) -> NwbGraph {
     let database = Connection::open(database).expect("Could not open database");
@@ -18,7 +18,7 @@ pub fn preprocess_roadmap<P: AsRef<Path>>(roadmap: &RoadMap, database: P) -> Nwb
 
     let roads = &roadmap.roads;
     let statement = database
-        .prepare("SELECT id,junction_id_begin, junction_id_end, rij_richting FROM wegvakken")
+        .prepare(include_str!("selection.sql"))
         .expect("Could not prepare statement")
         .query_map([], |f| {
             let id: usize = f.get(0)?;
@@ -46,8 +46,14 @@ pub fn preprocess_roadmap<P: AsRef<Path>>(roadmap: &RoadMap, database: P) -> Nwb
         })
         .collect::<HashMap<_, _>>();
 
-    for &road_id in roads.keys() {
-        let (road_id_start, road_id_end, rij_richting) = statement[&road_id];
+    for (road_id, (road_id_start, road_id_end, rij_richting)) in roads
+        .keys()
+        .filter_map(|road_id| statement.get(road_id).map(|a| (*road_id, a)))
+    {
+        if road_id_start == road_id_end {
+            println!("Found a road that starts and ends at the same place");
+            continue;
+        }
 
         let source = junction_to_node[&road_id_start];
         let target = junction_to_node[&road_id_end];

@@ -1,6 +1,6 @@
 use crate::{
     spatial::{JunctionSpatialIndex, RoadSection, RoadSpatialIndex},
-    JunctionId, RoadId, ShapeError,
+    JunctionId, RoadId, ShapeError, SKIP_TYPES,
 };
 use bevy::{
     math::{Vec2, Vec3},
@@ -116,6 +116,15 @@ fn get_usize(record: &Record, name: &str) -> Option<usize> {
     unreachable!();
 }
 
+fn get_text(record: &Record, name: &str) -> Option<String> {
+    let value = record.get(name).unwrap();
+
+    if let FieldValue::Character(x) = value {
+        return x.clone();
+    }
+    unreachable!();
+}
+
 /// Load junction point data
 fn load_junctions(roads: &Vec<(GenericPolyline<Point>, Record)>) -> HashMap<JunctionId, Vec2> {
     roads
@@ -123,11 +132,18 @@ fn load_junctions(roads: &Vec<(GenericPolyline<Point>, Record)>) -> HashMap<Junc
         .flat_map_iter(|(line, record)| {
             let junction_start = get_usize(record, "JTE_ID_BEG").unwrap();
             let junction_end = get_usize(record, "JTE_ID_END").unwrap();
+            let weg_type = get_text(record, "BST_CODE")
+                .map(|wt| SKIP_TYPES.contains(&&wt.as_ref()))
+                .unwrap_or(false);
+
+            if weg_type {
+                return vec![];
+            }
 
             let start = line.part(0).and_then(|p| p.first()).unwrap();
             let end = line.part(0).and_then(|p| p.last()).unwrap();
 
-            [
+            vec![
                 (
                     JunctionId::from(junction_start),
                     Vec2::new(start.x as f32, start.y as f32),
@@ -148,7 +164,15 @@ fn load_road_sections(
     roads
         .into_par_iter()
         .enumerate()
-        .map(|(id, (line, _))| {
+        .filter_map(|(id, (line, record))| {
+            let weg_type = get_text(&record, "BST_CODE")
+                .map(|wt| SKIP_TYPES.contains(&&wt.as_ref()))
+                .unwrap_or(false);
+
+            if weg_type {
+                return None;
+            }
+
             assert!(line.parts().len() == 1);
 
             let points = line
@@ -166,7 +190,7 @@ fn load_road_sections(
 
             let id = RoadId::from(id);
 
-            (id, RoadSection { id, points, aabb })
+            Some((id, RoadSection { id, points, aabb }))
         })
         .collect::<HashMap<_, _>>()
 }

@@ -137,7 +137,8 @@ fn initialize_heap<N, E: Distanceable>(
         },
     );
     for edge in network.edges_directed(s0, petgraph::Direction::Outgoing) {
-        assert!(s0 != edge.target());
+        assert_eq!(s0, edge.source());
+        assert_ne!(s0, edge.target());
         let distance = edge.weight().distance();
         heap.push(DijkstraNodeState {
             distance,

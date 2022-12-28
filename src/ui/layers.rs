@@ -10,8 +10,7 @@ use bevy::{
 use bevy_egui::{egui, EguiContext};
 use bevy_shapefile::{JunctionId, RoadId, RoadMap};
 use futures_lite::future;
-use highway::generation::core::Shorted;
-use network::{iterators::Distanceable, HighwayGraph};
+use network::{iterators::Distanceable, HighwayGraph, Shorted};
 use petgraph::visit::{EdgeRef, IntoEdgeReferences};
 use std::{collections::HashMap, path::Path};
 

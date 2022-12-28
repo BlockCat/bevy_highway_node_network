@@ -34,6 +34,8 @@ fn main() {
         },
     );
 
+    println!("Translated network");
+
     let mut layers = vec![calculate_layer(30, network.clone(), 2.0)];
 
     if let Some(x) = layers.first() {

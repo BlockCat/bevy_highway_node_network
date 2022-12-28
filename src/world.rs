@@ -135,22 +135,6 @@ fn init_road_map(config: Res<WorldConfig>, mut commands: Commands) {
     println!("Nodes: {}", network.node_count());
     println!("Edges: {}", network.edge_count());
 
-    // let out = network
-    //     .nodes()
-    //     .iter()
-    //     .map(|nn| nn.out_len())
-    //     .collect::<Vec<_>>();
-
-    // println!(
-    //     "out_edges: [avg: {}, min: {}, max: {}",
-    //     out.iter().sum::<usize>() as f32 / out.len() as f32,
-    //     out.iter().min().unwrap(),
-    //     out.iter().max().unwrap()
-    // );
-
-    // let next_level_edges = network::calculate_layer(30, &network, 2.0);
-    // println!("Collected phase1 edges: {}", next_level_edges.len());
-
     commands.insert_resource(road_map);
     commands.insert_resource(DirectedNetworkGraphContainer(network));
 
@@ -275,7 +259,7 @@ fn colour_system(
 pub fn convert(pos: Vec2, transform: &GlobalTransform, camera: &Camera) -> Vec2 {
     camera
         .ndc_to_world(transform, pos.extend(0.0))
-        .unwrap()
+        .unwrap_or(Vec3::ZERO)
         .truncate()
 }
 
