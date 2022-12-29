@@ -1,7 +1,7 @@
 use std::{iter::Enumerate, marker::PhantomData, ops::Range, slice};
 
 use petgraph::{
-    stable_graph::{DefaultIx, EdgeIndex, IndexType, NodeIndex},
+    stable_graph::{DefaultIx, EdgeIndex, IndexType, NodeIndex, StableDiGraph},
     visit::{self, EdgeRef, IntoNeighborsDirected},
     Directed,
     Direction::{self, Incoming, Outgoing},
@@ -388,5 +388,19 @@ impl<'a, E, Ix: IndexType> Iterator for EdgeReferences<'a, E, Ix> {
         Self: Sized,
     {
         self.iter.count()
+    }
+}
+
+/// Node indices are not invalidated
+impl<N, E, Ix: IndexType> From<SuperGraph<N, E, Ix>> for StableDiGraph<N, E, Ix> {
+    fn from(value: SuperGraph<N, E, Ix>) -> Self {
+        todo!()
+    }
+}
+
+/// Node indices are invalidated
+impl<N, E, Ix: IndexType> From<StableDiGraph<N, E, Ix>> for SuperGraph<N, E, Ix> {
+    fn from(value: StableDiGraph<N, E, Ix>) -> Self {
+        todo!()
     }
 }

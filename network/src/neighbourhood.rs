@@ -108,12 +108,12 @@ mod tests {
 
     use std::collections::HashMap;
 
-    use crate::{ForwardNeighbourhood, HighwayGraph, HighwayNodeIndex};
+    use crate::{ForwardNeighbourhood, HighwayGraph, HighwayNodeIndex, IntermediateGraph};
 
     #[test]
     fn forward_neighbourhood_test() {
         // https://www.baeldung.com/wp-content/uploads/2017/01/initial-graph.png
-        let mut graph = HighwayGraph::default();
+        let mut graph = IntermediateGraph::default();
 
         let nodes = [
             graph.add_node(0),
@@ -132,6 +132,8 @@ mod tests {
         graph.add_edge(nodes[3], nodes[4], 10.0); // D => E
         graph.add_edge(nodes[3], nodes[5], 10.0); // D => F
         graph.add_edge(nodes[5], nodes[4], 10.0); // F => E
+
+        let graph = HighwayGraph::from(graph);
 
         let forward = ForwardNeighbourhood::from_network(3, &graph);
 

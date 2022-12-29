@@ -1,5 +1,5 @@
 use network::{
-    iterators::Distanceable, BackwardNeighbourhood, ForwardNeighbourhood, HighwayGraph, Shorted,
+    iterators::Distanceable, BackwardNeighbourhood, ForwardNeighbourhood, HighwayGraph, Shorted, IntermediateGraph,
 };
 use rayon::prelude::*;
 use std::collections::HashSet;
@@ -57,14 +57,16 @@ where
 {
     let phase_1_graph = phase_1(size, network);
 
-    phase_2(phase_1_graph, contraction_factor)
+    let phase_2_graph = phase_2(phase_1_graph, contraction_factor);
+
+    HighwayGraph::from(phase_2_graph)
 }
 
 /// Phase 1: ... ?
 pub(crate) fn phase_1<N: Send + Sync, E: Send + Sync + Distanceable>(
     size: usize,
     mut network: HighwayGraph<N, E>,
-) -> HighwayGraph<N, E> {
+) -> IntermediateGraph<N, E> {
     println!("Start computing (forward backward)");
 
     let (duration, computed) = stopwatch!(ComputedState::new(size, &network));
@@ -97,9 +99,9 @@ pub(crate) fn phase_1<N: Send + Sync, E: Send + Sync + Distanceable>(
  * Calculate the core network
  */
 fn phase_2<N, E>(
-    intermediate: HighwayGraph<N, E>,
+    intermediate: IntermediateGraph<N, E>,
     contraction_factor: f32,
-) -> HighwayGraph<N, Shorted>
+) -> IntermediateGraph<N, Shorted>
 where
     N: Clone,
     E: Distanceable,

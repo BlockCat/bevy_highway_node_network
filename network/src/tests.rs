@@ -1,10 +1,10 @@
 use petgraph::stable_graph::StableDiGraph;
 
-use crate::HighwayGraph;
+use crate::{HighwayGraph, IntermediateGraph};
 
 // https://www.baeldung.com/wp-content/uploads/2017/01/initial-graph.png
 pub fn create_ref_network_1() -> HighwayGraph<usize, f32> {
-    let mut graph = HighwayGraph::default();
+    let mut graph = IntermediateGraph::default();
 
     let nodes = [
         graph.add_node(0),
@@ -34,11 +34,11 @@ pub fn create_ref_network_1() -> HighwayGraph<usize, f32> {
         (nodes[5], nodes[3], 1.0),  // D <- F
     ]);
 
-    graph
+    HighwayGraph::from(graph)
 }
 
 pub fn create_undirected_network() -> HighwayGraph<usize, f32> {
-    let mut graph = HighwayGraph::default();
+    let mut graph = IntermediateGraph::default();
     let nodes = (0..16).map(|x| graph.add_node(x)).collect::<Vec<_>>();
 
     graph.add_edge(nodes[0], nodes[1], 3.0);
@@ -84,5 +84,5 @@ pub fn create_undirected_network() -> HighwayGraph<usize, f32> {
     graph.add_edge(nodes[14], nodes[11], 14.0);
     graph.add_edge(nodes[11], nodes[14], 14.0);
 
-    graph
+    HighwayGraph::from(graph)
 }

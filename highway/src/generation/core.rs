@@ -1,20 +1,16 @@
-use network::{iterators::Distanceable, HighwayGraph, HighwayNodeIndex};
-use network::{BypassNode, Shorted};
+use network::{iterators::Distanceable, HighwayNodeIndex};
+use network::{BypassNode, IntermediateGraph, Shorted};
 use petgraph::visit::IntoNodeIdentifiers;
-use petgraph::{
-    visit::{EdgeRef, IntoEdgesDirected},
-    Direction,
-};
-use serde::{Deserialize, Serialize};
+use petgraph::Direction;
 use std::{
     collections::{HashSet, VecDeque},
     hash::Hash,
 };
 
 pub(crate) fn core_network_with_patch<N: Clone, E: Distanceable>(
-    old_network: HighwayGraph<N, E>,
+    old_network: IntermediateGraph<N, E>,
     contraction_factor: f32,
-) -> HighwayGraph<N, Shorted> {
+) -> IntermediateGraph<N, Shorted> {
     let nodes = old_network.node_identifiers();
     let mut queue = HashNodeQueue::<HighwayNodeIndex>::from_iter(nodes);
 

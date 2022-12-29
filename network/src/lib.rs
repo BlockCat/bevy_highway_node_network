@@ -8,10 +8,13 @@ pub mod super_graph;
 use iterators::Distanceable;
 use itertools::Itertools;
 pub use neighbourhood::*;
+use petgraph::data::FromElements;
 use petgraph::stable_graph::EdgeIndex;
 use petgraph::stable_graph::IndexType;
 use petgraph::stable_graph::NodeIndex;
+use petgraph::stable_graph::StableDiGraph;
 use petgraph::visit::EdgeRef;
+use petgraph::visit::IntoEdgeReferences;
 use petgraph::visit::IntoEdgesDirected;
 use petgraph::Direction;
 use serde::Deserialize;
@@ -24,6 +27,7 @@ use super_graph::SuperGraph;
 pub struct HighwayIndex(usize);
 
 pub type HighwayGraph<N, E> = SuperGraph<N, E, HighwayIndex>;
+pub type IntermediateGraph<N, E> = StableDiGraph<N, E, HighwayIndex>;
 pub type HighwayNodeIndex = NodeIndex<HighwayIndex>;
 pub type HighwayEdgeIndex = EdgeIndex<HighwayIndex>;
 
@@ -49,7 +53,7 @@ pub trait BypassNode {
     fn bypass(&mut self, node: HighwayNodeIndex) -> Vec<HighwayNodeIndex>;
 }
 
-impl<N> BypassNode for HighwayGraph<N, Shorted> {
+impl<N> BypassNode for IntermediateGraph<N, Shorted> {
     fn bypass(&mut self, node: HighwayNodeIndex) -> Vec<HighwayNodeIndex> {
         let in_edges = self
             .edges_directed(node, petgraph::Direction::Incoming)
@@ -114,7 +118,7 @@ impl<N> BypassNode for HighwayGraph<N, Shorted> {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Shorted {
-    pub distance: f32,    
+    pub distance: f32,
     /// Points to edges in the previous layer
     pub skipped_edges: Vec<HighwayEdgeIndex>,
 }
