@@ -19,7 +19,7 @@ network = {path = "./network"}
 rusqlite = {version = "0.28.0", features = ["bundled"]}
 
 serde = {version = "1.0.136", features = ["derive"]}
-zstd = "0.12.1+zstd.1.5.2"
+zstd = "0.12"
 
 futures-lite = "1.12.0"
 rayon = "1.5.1"
@@ -35,9 +35,6 @@ name = "phase_1_benchmark"
 opt-level = 3
 
 [profile.dev.package.bevy]
-opt-level = 3
-
-[profile.dev.package.bevy_prototype_lyon]
 opt-level = 3
 
 [workspace]

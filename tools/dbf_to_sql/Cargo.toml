@@ -9,6 +9,3 @@ version = "0.1.0"
 
 rusqlite = {version = "0.28.0", features = ["bundled"]}
 shapefile = {version = "0.3.0"}
-
-[profile.dev.package.bevy]
-opt-level = 3
