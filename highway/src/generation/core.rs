@@ -1,6 +1,6 @@
-use itertools::Itertools;
+use network::{iterators::Distanceable, HighwayGraph, HighwayNodeIndex};
 use network::{BypassNode, Shorted};
-use network::{iterators::Distanceable, HighwayEdgeIndex, HighwayGraph, HighwayNodeIndex};
+use petgraph::visit::IntoNodeIdentifiers;
 use petgraph::{
     visit::{EdgeRef, IntoEdgesDirected},
     Direction,
@@ -11,19 +11,17 @@ use std::{
     hash::Hash,
 };
 
-
 pub(crate) fn core_network_with_patch<N: Clone, E: Distanceable>(
     old_network: HighwayGraph<N, E>,
     contraction_factor: f32,
 ) -> HighwayGraph<N, Shorted> {
-    let nodes = old_network.node_indices();
+    let nodes = old_network.node_identifiers();
     let mut queue = HashNodeQueue::<HighwayNodeIndex>::from_iter(nodes);
 
     let mut next_network = old_network.map(
         |_, n| n.clone(),
         |id, e| Shorted {
             distance: e.distance(),
-            skipped_nodes: vec![],
             skipped_edges: vec![id],
         },
     );
@@ -41,7 +39,7 @@ pub(crate) fn core_network_with_patch<N: Clone, E: Distanceable>(
         let short_cuts = out_edges * in_edges;
         let contraction = (out_edges + in_edges) * contraction_factor;
 
-        if short_cuts <= contraction {
+        if short_cuts < contraction {
             let touched = next_network.bypass(node);
             for touched in touched {
                 queue.push_back(touched);

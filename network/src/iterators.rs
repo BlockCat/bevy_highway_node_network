@@ -1,5 +1,6 @@
 use crate::{HighwayGraph, HighwayNodeIndex};
 use petgraph::Direction::Incoming;
+use petgraph::visit::*;
 use petgraph::{visit::EdgeRef, Direction::Outgoing};
 use std::collections::{BinaryHeap, HashSet};
 

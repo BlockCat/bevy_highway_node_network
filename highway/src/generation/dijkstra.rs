@@ -1,6 +1,6 @@
 use super::ComputedState;
 use network::{iterators::Distanceable, HighwayEdgeIndex, HighwayGraph, HighwayNodeIndex};
-use petgraph::visit::EdgeRef;
+use petgraph::visit::{EdgeRef, IntoEdgesDirected};
 use std::collections::{HashMap, VecDeque};
 
 use super::dag::*;
@@ -137,8 +137,8 @@ fn initialize_heap<N, E: Distanceable>(
         },
     );
     for edge in network.edges_directed(s0, petgraph::Direction::Outgoing) {
-        assert_eq!(s0, edge.source());
-        assert_ne!(s0, edge.target());
+        debug_assert_eq!(s0, edge.source());
+        debug_assert_ne!(s0, edge.target());
         let distance = edge.weight().distance();
         heap.push(DijkstraNodeState {
             distance,

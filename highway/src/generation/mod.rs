@@ -3,6 +3,7 @@ use network::{
 };
 use rayon::prelude::*;
 use std::collections::HashSet;
+use petgraph::visit::*;
 
 pub mod core;
 pub mod dag;
@@ -78,7 +79,7 @@ pub(crate) fn phase_1<N: Send + Sync, E: Send + Sync + Distanceable>(
     );
 
     let edges = network
-        .node_indices()
+        .node_identifiers()
         .par_bridge()
         .flat_map_iter(|id| dijkstra::calculate_edges(id, &computed, &network))
         .collect::<HashSet<_>>();

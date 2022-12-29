@@ -38,7 +38,7 @@ pub fn create_ref_network_1() -> HighwayGraph<usize, f32> {
 }
 
 pub fn create_undirected_network() -> HighwayGraph<usize, f32> {
-    let mut graph = StableDiGraph::default();
+    let mut graph = HighwayGraph::default();
     let nodes = (0..16).map(|x| graph.add_node(x)).collect::<Vec<_>>();
 
     graph.add_edge(nodes[0], nodes[1], 3.0);

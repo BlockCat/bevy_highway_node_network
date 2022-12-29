@@ -3,6 +3,7 @@
 
 pub mod iterators;
 pub mod neighbourhood;
+pub mod super_graph;
 
 use iterators::Distanceable;
 use itertools::Itertools;
@@ -10,17 +11,19 @@ pub use neighbourhood::*;
 use petgraph::stable_graph::EdgeIndex;
 use petgraph::stable_graph::IndexType;
 use petgraph::stable_graph::NodeIndex;
-use petgraph::stable_graph::StableDiGraph;
 use petgraph::visit::EdgeRef;
+use petgraph::visit::IntoEdgesDirected;
+use petgraph::Direction;
 use serde::Deserialize;
 use serde::Serialize;
+use super_graph::SuperGraph;
 
 #[derive(
     Debug, Clone, Copy, Hash, PartialEq, Eq, PartialOrd, Ord, Default, Serialize, Deserialize,
 )]
 pub struct HighwayIndex(usize);
 
-pub type HighwayGraph<N, E> = StableDiGraph<N, E, HighwayIndex>;
+pub type HighwayGraph<N, E> = SuperGraph<N, E, HighwayIndex>;
 pub type HighwayNodeIndex = NodeIndex<HighwayIndex>;
 pub type HighwayEdgeIndex = EdgeIndex<HighwayIndex>;
 
@@ -65,13 +68,13 @@ impl<N> BypassNode for HighwayGraph<N, Shorted> {
             .collect_vec();
 
         // The node has no receiving edges. Only outgoing. Then remove the node.
-        if in_edges.len() == 0 {
+        if self.edges_directed(node, Direction::Outgoing).count() == 0 {
             self.remove_node(node);
             return vec![];
         }
 
         // The node has no outgoing edges. Only incoming. Then remove the node.
-        if out_edges.len() == 0 {
+        if self.edges_directed(node, Direction::Incoming).count() == 0 {
             self.remove_node(node);
             return vec![];
         }
@@ -85,9 +88,6 @@ impl<N> BypassNode for HighwayGraph<N, Shorted> {
                 }
                 // Connect source to target.
                 let combined_distance = source_shorted.distance() + target_shorted.distance();
-                let mut skipped_nodes = vec![node];
-                skipped_nodes.extend(source_shorted.skipped_nodes.clone());
-                skipped_nodes.extend(target_shorted.skipped_nodes.clone());
 
                 let mut skipped_edges = Vec::with_capacity(
                     source_shorted.skipped_edges.len() + target_shorted.skipped_edges.len(),
@@ -100,7 +100,6 @@ impl<N> BypassNode for HighwayGraph<N, Shorted> {
                     *target,
                     Shorted {
                         distance: combined_distance,
-                        skipped_nodes,
                         skipped_edges,
                     },
                 );
@@ -115,9 +114,7 @@ impl<N> BypassNode for HighwayGraph<N, Shorted> {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Shorted {
-    pub distance: f32,
-    /// Points to nodes in the previous layer
-    pub skipped_nodes: Vec<HighwayNodeIndex>,
+    pub distance: f32,    
     /// Points to edges in the previous layer
     pub skipped_edges: Vec<HighwayEdgeIndex>,
 }

@@ -1,5 +1,6 @@
 use crate::iterators::{DijkstraIterator, Distanceable};
 use crate::{HighwayGraph, HighwayNodeIndex};
+use petgraph::visit::*;
 use rayon::prelude::*;
 use std::collections::HashMap;
 use std::ops::Deref;
@@ -44,7 +45,7 @@ impl ForwardNeighbourhood {
         network: &HighwayGraph<N, E>,
     ) -> Self {
         let mut radius: HashMap<_, _> = network
-            .node_indices()
+            .node_identifiers()
             .par_bridge()
             .map(|node| {
                 (
@@ -64,7 +65,7 @@ impl BackwardNeighbourhood {
         network: &HighwayGraph<N, E>,
     ) -> Self {
         let mut radius: HashMap<_, _> = network
-            .node_indices()
+            .node_identifiers()
             .par_bridge()
             .map(|node| {
                 (
