@@ -140,7 +140,7 @@ fn initialize_heap<D: NetworkData>(
         },
     );
     for (id, edge) in network.out_edges(s0) {
-        assert!(s0 != edge.target());
+        // assert!(s0 != edge.target());
         heap.push(DijkstraNodeState {
             distance: edge.distance(),
             current: edge.target(),
