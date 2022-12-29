@@ -8,13 +8,13 @@ pub mod super_graph;
 use iterators::Distanceable;
 use itertools::Itertools;
 pub use neighbourhood::*;
-use petgraph::data::FromElements;
+
 use petgraph::stable_graph::EdgeIndex;
 use petgraph::stable_graph::IndexType;
 use petgraph::stable_graph::NodeIndex;
 use petgraph::stable_graph::StableDiGraph;
 use petgraph::visit::EdgeRef;
-use petgraph::visit::IntoEdgeReferences;
+
 use petgraph::visit::IntoEdgesDirected;
 use petgraph::Direction;
 use serde::Deserialize;

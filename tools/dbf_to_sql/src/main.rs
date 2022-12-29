@@ -1,7 +1,9 @@
 use std::path::Path;
 
-use rusqlite::{named_params, params, Connection, Transaction};
+use rusqlite::{named_params, Connection, Transaction};
 use shapefile::dbase::{FieldValue, Record};
+
+pub const SKIP_TYPES: [&'static str; 7] = ["FP", "BU", "VP", "OVB", "CADO", "RP", "VV"];
 
 const CREATE_TABLE_SQL: &str = include_str!("create_table.sql");
 const INSERT_SQL: &str = include_str!("insert.sql");

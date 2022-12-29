@@ -1,14 +1,14 @@
 use network::{
-    iterators::Distanceable, BackwardNeighbourhood, ForwardNeighbourhood, HighwayGraph, Shorted, IntermediateGraph,
+    iterators::Distanceable, BackwardNeighbourhood, ForwardNeighbourhood, HighwayGraph,
+    IntermediateGraph, Shorted,
 };
-use rayon::prelude::*;
-use std::collections::HashSet;
 use petgraph::visit::*;
+use rayon::prelude::*;
+use std::collections::{HashMap, HashSet};
 
 pub mod core;
 pub mod dag;
 pub mod dijkstra;
-// pub mod intermediate_network;
 
 macro_rules! stopwatch {
     ($x:expr) => {{
@@ -53,7 +53,7 @@ pub fn calculate_layer<N, E>(
 ) -> HighwayGraph<N, Shorted>
 where
     N: Send + Sync + Clone,
-    E: Send + Sync + Distanceable,
+    E: Send + Sync + Distanceable + Clone,
 {
     let phase_1_graph = phase_1(size, network);
 
@@ -63,7 +63,7 @@ where
 }
 
 /// Phase 1: ... ?
-pub(crate) fn phase_1<N: Send + Sync, E: Send + Sync + Distanceable>(
+pub(crate) fn phase_1<N: Send + Sync + Clone, E: Send + Sync + Clone + Distanceable>(
     size: usize,
     mut network: HighwayGraph<N, E>,
 ) -> IntermediateGraph<N, E> {
@@ -88,11 +88,37 @@ pub(crate) fn phase_1<N: Send + Sync, E: Send + Sync + Distanceable>(
 
     println!("Got retained edges");
 
-    network.retain_edges(|_, e| edges.contains(&e));
+    let mut new_network = IntermediateGraph::default();
+
+    let mut nodes = edges
+        .iter()
+        .flat_map(|e| {
+            let edge = network.edge_reference(*e);
+            [
+                (edge.source(), &network[edge.source()]),
+                (edge.target(), &network[edge.target()]),
+            ]
+        })
+        .collect::<Vec<_>>();
+
+    nodes.dedup_by_key(|x| x.0);
+    nodes.sort_by_key(|x| x.0);
+
+    for (node, we) in nodes {
+        let a = new_network.add_node(we.clone());
+        assert_eq!(a, node);
+    }
+
+    for edge in edges {
+        let edge = network.edge_reference(edge);
+        new_network.update_edge(edge.source(), edge.target(), edge.weight().clone());
+    }
+
+    // network.retain_edges(|_, e| edges.contains(&e));
 
     println!("Finished computing (edges collections)");
 
-    network
+    new_network
 }
 
 /**

@@ -128,7 +128,8 @@ fn clicked_preprocess(
 ) -> PreProcess {
     println!("Clicked: {layer_count}");
 
-    let base = network.map(|_, n| *n, |_, e| RoadWeight(*e, road_map.road_length(*e)));
+    let base =
+        HighwayGraph::from(network.map(|_, n| *n, |_, e| RoadWeight(*e, road_map.road_length(*e))));
 
     let mut layers = Vec::new();
     layers.push(load_or_calculate("data/layer_0.graph", || {

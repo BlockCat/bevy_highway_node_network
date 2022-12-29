@@ -9,8 +9,8 @@ mod spatial;
 
 pub type AABB = rstar::AABB<[f32; 2]>;
 
-// pub const SKIP_TYPES: [&'static str; 7] = ["FP", "BU", "VP", "OVB", "CADO", "RP", "VV"];
-pub const SKIP_TYPES: [&'static str; 0] = [];
+pub const SKIP_TYPES: [&'static str; 7] = ["FP", "BU", "VP", "OVB", "CADO", "RP", "VV"];
+// pub const SKIP_TYPES: [&'static str; 0] = [];
 
 pub fn from_shapefile<P: AsRef<Path>>(path: P) -> Result<RoadMap, ShapeError> {
     println!("Start loading file");

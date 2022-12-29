@@ -1,13 +1,13 @@
 use bevy::math::Vec2;
 use bevy_shapefile::{JunctionId, RoadId, RoadMap};
-use network::{HighwayEdgeIndex, HighwayGraph, HighwayNodeIndex};
+use network::{HighwayEdgeIndex, HighwayGraph, HighwayNodeIndex, IntermediateGraph};
 use rusqlite::{
     types::{FromSql, FromSqlError},
     Connection,
 };
 use std::{collections::HashMap, path::Path};
 
-pub type NwbGraph = HighwayGraph<(JunctionId, Vec2), RoadId>;
+pub type NwbGraph = IntermediateGraph<(JunctionId, Vec2), RoadId>;
 pub type NwbNodeIndex = HighwayNodeIndex;
 pub type NwbEdgeIndex = HighwayEdgeIndex;
 

@@ -1,16 +1,21 @@
-use std::{iter::Enumerate, marker::PhantomData, ops::Range, slice};
+use std::{
+    iter::Enumerate,
+    marker::PhantomData,
+    ops::{Index, Range},
+    slice,
+};
 
 use petgraph::{
     stable_graph::{DefaultIx, EdgeIndex, IndexType, NodeIndex, StableDiGraph},
-    visit::{self, EdgeRef, IntoNeighborsDirected},
+    visit::{self, EdgeRef, IntoEdgesDirected, IntoNeighborsDirected},
     Directed,
     Direction::{self, Incoming, Outgoing},
-    IntoWeightedEdge,
 };
+use serde::{Deserialize, Serialize};
 
 /// The graph's node type
-#[derive(Debug, Clone)]
-pub struct Node<N, Ix> {
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Node<N, Ix: IndexType> {
     /// Associated node data
     pub weight: N,
     /// Next outgoing edge
@@ -26,8 +31,8 @@ impl<N, Ix: IndexType> Node<N, Ix> {
 }
 
 /// The graph's edge type.
-#[derive(Debug, Clone)]
-pub struct Edge<E, Ix> {
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Edge<E, Ix: IndexType> {
     /// Associated edge data.
     pub weight: E,
     /// Me -> Other
@@ -47,11 +52,20 @@ impl<E, Ix: IndexType> Edge<E, Ix> {
 
 /// Simple graph,
 /// Nodes point to the first
-#[derive(Debug, Clone, Default)]
-pub struct SuperGraph<N, E, Ix = DefaultIx> {
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SuperGraph<N, E, Ix: IndexType = DefaultIx> {
     nodes: Vec<Node<N, Ix>>,
     /// per node: Forward|Both|Backward
     edges: Vec<Edge<E, Ix>>,
+}
+
+impl<N, E, Ix: IndexType> Default for SuperGraph<N, E, Ix> {
+    fn default() -> Self {
+        Self {
+            nodes: Default::default(),
+            edges: Default::default(),
+        }
+    }
 }
 
 impl<N, E, Ix: IndexType> SuperGraph<N, E, Ix> {
@@ -70,6 +84,14 @@ impl<N, E, Ix: IndexType> SuperGraph<N, E, Ix> {
     #[inline]
     pub fn is_directed(&self) -> bool {
         true
+    }
+
+    pub fn edge_reference(&self, e: EdgeIndex<Ix>) -> EdgeReference<'_, E, Ix> {
+        EdgeReference {
+            index: e,
+            node: self.edges[e.index()].node.clone(),
+            weight: &self.edges[e.index()].weight,
+        }
     }
 
     pub fn node_weight(&self, a: NodeIndex<Ix>) -> Option<&N> {
@@ -104,41 +126,7 @@ impl<N, E, Ix: IndexType> SuperGraph<N, E, Ix> {
     }
 }
 
-impl<N, E, Ix: IndexType> SuperGraph<N, E, Ix> {
-    // pub fn add_node(&mut self, weight: N) -> NodeIndex<Ix> {
-    //     let index = self.node_count();
-    //     self.nodes.push(Node {
-    //         weight,
-    //         next: [
-    //             EdgeIndex::new(self.edge_count()),
-    //             EdgeIndex::new(self.edge_count()),
-    //             EdgeIndex::new(self.edge_count()),
-    //         ],
-    //     });
-    //     NodeIndex::new(index)
-    // }
-    // pub fn add_edge(&mut self, a: NodeIndex<Ix>, b: NodeIndex<Ix>, weight: E) -> EdgeIndex<Ix> {
-    //     todo!()
-    // }
-
-    // pub fn extend_with_edges<I>(&mut self, iterable: I)
-    // where
-    //     I: IntoIterator,
-    //     I::Item: IntoWeightedEdge<E>,
-    //     <I::Item as IntoWeightedEdge<E>>::NodeId: Into<NodeIndex<Ix>>,
-    //     N: Default,
-    // {
-    //     todo!()
-    // }
-
-    // pub fn remove_node(&mut self, a: NodeIndex<Ix>) -> Option<N> {
-    //     todo!()
-    // }
-
-    // pub fn remove_edge(&mut self, e: EdgeIndex<Ix>) -> Option<E> {
-    //     todo!()
-    // }
-}
+impl<N, E, Ix: IndexType> SuperGraph<N, E, Ix> {}
 
 #[derive(Debug, Clone)]
 pub struct Neighbors<'a, E: 'a, Ix: 'a + IndexType> {
@@ -169,18 +157,6 @@ impl<N, E, Ix: IndexType> visit::GraphBase for SuperGraph<N, E, Ix> {
     type EdgeId = EdgeIndex<Ix>;
     type NodeId = NodeIndex<Ix>;
 }
-
-// impl<N, E, Ix> visit::Visitable for SuperGraph<N, E, Ix> {
-//     type Map = ;
-
-//     fn visit_map(self: &Self) -> Self::Map {
-//         todo!()
-//     }
-
-//     fn reset_map(self: &Self,map: &mut Self::Map) {
-//         todo!()
-//     }
-// }
 
 impl<N, E, Ix: IndexType> visit::GraphProp for SuperGraph<N, E, Ix> {
     type EdgeType = Directed;
@@ -228,21 +204,23 @@ impl<'a, N: 'a, E: 'a, Ix: IndexType> visit::IntoEdgeReferences for &'a SuperGra
     type EdgeReferences = EdgeReferences<'a, E, Ix>;
 
     fn edge_references(self) -> Self::EdgeReferences {
-        (*self).edge_references()
+        EdgeReferences {
+            iter: self.edges.iter().enumerate(),
+        }
     }
 }
 impl<'a, N, E, Ix: IndexType> visit::IntoEdges for &'a SuperGraph<N, E, Ix> {
     type Edges = Edges<'a, E, Ix>;
 
     fn edges(self, a: Self::NodeId) -> Self::Edges {
-        todo!()
+        self.edges_directed(a, Direction::Outgoing)
     }
 }
 
 impl<'a, N, E, Ix: IndexType> visit::IntoEdgesDirected for &'a SuperGraph<N, E, Ix> {
     type EdgesDirected = Edges<'a, E, Ix>;
 
-    fn edges_directed(self, a: Self::NodeId, dir: Direction) -> Self::EdgesDirected {
+    fn edges_directed(self, _a: Self::NodeId, _dir: Direction) -> Self::EdgesDirected {
         todo!()
     }
 }
@@ -251,12 +229,15 @@ impl<'a, N, E: 'a, Ix: IndexType> visit::IntoNodeIdentifiers for &'a SuperGraph<
     type NodeIdentifiers = NodeIndices<Ix>;
 
     fn node_identifiers(self) -> Self::NodeIdentifiers {
-        todo!()
+        NodeIndices {
+            r: 0..self.nodes.len(),
+            ty: Default::default(),
+        }
     }
 }
 
 #[derive(Debug, Clone)]
-pub struct Edges<'a, E: 'a, Ix: 'a> {
+pub struct Edges<'a, E: 'a, Ix: 'a + IndexType> {
     range: Range<usize>,
     edges: &'a [Edge<E, Ix>],
 }
@@ -393,14 +374,30 @@ impl<'a, E, Ix: IndexType> Iterator for EdgeReferences<'a, E, Ix> {
 
 /// Node indices are not invalidated
 impl<N, E, Ix: IndexType> From<SuperGraph<N, E, Ix>> for StableDiGraph<N, E, Ix> {
-    fn from(value: SuperGraph<N, E, Ix>) -> Self {
+    fn from(_value: SuperGraph<N, E, Ix>) -> Self {
         todo!()
     }
 }
 
 /// Node indices are invalidated
 impl<N, E, Ix: IndexType> From<StableDiGraph<N, E, Ix>> for SuperGraph<N, E, Ix> {
-    fn from(value: StableDiGraph<N, E, Ix>) -> Self {
+    fn from(_value: StableDiGraph<N, E, Ix>) -> Self {
         todo!()
+    }
+}
+
+impl<N, E, Ix: IndexType> Index<EdgeIndex<Ix>> for SuperGraph<N, E, Ix> {
+    type Output = E;
+
+    fn index(&self, index: EdgeIndex<Ix>) -> &Self::Output {
+        &self.edges[index.index()].weight
+    }
+}
+
+impl<N, E, Ix: IndexType> Index<NodeIndex<Ix>> for SuperGraph<N, E, Ix> {
+    type Output = N;
+
+    fn index(&self, index: NodeIndex<Ix>) -> &Self::Output {
+        &self.nodes[index.index()].weight
     }
 }
