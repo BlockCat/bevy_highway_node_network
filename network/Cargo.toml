@@ -10,5 +10,4 @@ bincode = "1.3.3"
 itertools = "*"
 rayon = "1.5.1"
 serde = {version = "1.0.136", features = ["derive"]}
-
 petgraph = {version = "0.6", features = ["serde-1"]}

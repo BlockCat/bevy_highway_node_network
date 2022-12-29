@@ -76,6 +76,7 @@ impl<T: Hash + Eq + Copy> HashNodeQueue<T> {
 
     fn push_back(&mut self, value: T) {
         if !self.contains(&value) {
+            self.seen.insert(value);
             self.queue.push_back(value);
         }
     }
