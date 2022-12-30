@@ -1,5 +1,5 @@
 use std::{
-    collections::{HashMap},
+    collections::HashMap,
     iter::Enumerate,
     marker::PhantomData,
     ops::{Index, Range},
@@ -479,17 +479,27 @@ impl<N: Clone, E: Clone, Ix: IndexType> From<CountStableGraph<N, E, Ix>> for Sup
                         EdgeIndex::new(end_edge),
                     ],
                 });
-                graph.edges.extend(out_edges.iter().map(|e| Edge {
-                    weight: e.weight().clone(),
-                    node: [e.source(), e.target()],
+
+                graph.edges.extend(out_edges.iter().map(|e| {
+                    debug_assert_eq!(e.source(), *id);
+                    Edge {
+                        weight: e.weight().clone(),
+                        node: [e.source(), e.target()],
+                    }
                 }));
-                graph.edges.extend(both_edges.iter().map(|e| Edge {
-                    weight: e.weight().clone(),
-                    node: [e.source(), e.target()],
+                graph.edges.extend(both_edges.iter().map(|e| {
+                    debug_assert_eq!(e.source(), *id);
+                    Edge {
+                        weight: e.weight().clone(),
+                        node: [e.source(), e.target()],
+                    }
                 }));
-                graph.edges.extend(in_edges.iter().map(|e| Edge {
-                    weight: e.weight().clone(),
-                    node: [e.source(), e.target()],
+                graph.edges.extend(in_edges.iter().map(|e| {
+                    debug_assert_eq!(e.target(), *id);
+                    Edge {
+                        weight: e.weight().clone(),
+                        node: [e.target(), e.source()],
+                    }
                 }));
                 (old_index, new_index)
             })

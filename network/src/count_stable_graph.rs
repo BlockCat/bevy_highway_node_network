@@ -1,4 +1,5 @@
 use petgraph::{
+    data::Build,
     graph::Frozen,
     stable_graph::{
         EdgeIndex, EdgeReference, EdgeReferences, Edges, IndexType, NodeIndex, NodeIndices,
@@ -7,11 +8,10 @@ use petgraph::{
     visit::{self, IntoEdgeReferences, IntoNodeReferences},
     Direction, IntoWeightedEdge,
 };
-use serde::{Serialize, Deserialize};
-use std::{
-    collections::HashMap,
-    ops::{Index},
-};
+use serde::{Deserialize, Serialize};
+use std::{collections::HashMap, ops::Index, slice::SliceIndex};
+
+use crate::iterators::Distanceable;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CountStableGraph<N, E, Ix: IndexType> {
@@ -27,6 +27,19 @@ impl<N, E, Ix: IndexType> Default for CountStableGraph<N, E, Ix> {
             out_edge: Default::default(),
             in_edge: Default::default(),
         }
+    }
+}
+
+impl<N, E: Distanceable, Ix: IndexType> CountStableGraph<N, E, Ix> {
+    pub fn update_edge(&mut self, a: NodeIndex<Ix>, b: NodeIndex<Ix>, weight: E) -> EdgeIndex<Ix> {
+        if let Some(ix) = self.find_edge(a, b) {
+            let ow = self.graph[ix].distance();
+            if weight.distance() < ow {
+                self.graph[ix] = weight;
+            }
+            return ix;
+        }
+        self.add_edge(a, b, weight)
     }
 }
 
@@ -62,6 +75,19 @@ impl<N, E, Ix: IndexType> CountStableGraph<N, E, Ix> {
         n
     }
 
+    pub fn recount(&mut self) {
+        self.out_edge = self
+            .graph
+            .node_indices()
+            .map(|n| (n, self.graph.edges_directed(n, Direction::Outgoing).count()))
+            .collect();
+        self.in_edge = self
+            .graph
+            .node_indices()
+            .map(|n| (n, self.graph.edges_directed(n, Direction::Incoming).count()))
+            .collect();
+    }
+
     pub fn add_edge(&mut self, a: NodeIndex<Ix>, b: NodeIndex<Ix>, weight: E) -> EdgeIndex<Ix> {
         let i = self.graph.add_edge(a, b, weight);
         *self.out_edge.entry(a).or_default() += 1;
@@ -69,11 +95,22 @@ impl<N, E, Ix: IndexType> CountStableGraph<N, E, Ix> {
         i
     }
 
-    pub fn remove_node(&mut self, a: NodeIndex<Ix>) -> Option<N> {
-        let o = self.graph.remove_node(a);
+    pub fn remove_node(&mut self, n: NodeIndex<Ix>) -> Option<N> {
+        self.graph
+            .neighbors_directed(n, Direction::Outgoing)
+            .for_each(|n| {
+                *self.in_edge.get_mut(&n).unwrap() -= 1;
+            });
 
-        self.out_edge.remove(&a);
-        self.in_edge.remove(&a);
+        self.graph
+            .neighbors_directed(n, Direction::Incoming)
+            .for_each(|n| {
+                *self.out_edge.get_mut(&n).unwrap() -= 1;
+            });
+        let o = self.graph.remove_node(n);
+
+        self.out_edge.remove(&n);
+        self.in_edge.remove(&n);
 
         o
     }
@@ -115,16 +152,7 @@ impl<N, E, Ix: IndexType> CountStableGraph<N, E, Ix> {
     {
         self.graph.retain_edges(visit);
 
-        self.out_edge = self
-            .graph
-            .node_indices()
-            .map(|n| (n, self.graph.edges_directed(n, Direction::Outgoing).count()))
-            .collect();
-        self.in_edge = self
-            .graph
-            .node_indices()
-            .map(|n| (n, self.graph.edges_directed(n, Direction::Incoming).count()))
-            .collect();
+        self.recount();
     }
 
     pub fn edge_weights(&self) -> impl Iterator<Item = &E> {

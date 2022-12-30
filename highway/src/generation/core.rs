@@ -1,6 +1,7 @@
 use network::{iterators::Distanceable, HighwayNodeIndex};
 use network::{BypassNode, IntermediateGraph, Shorted};
 use petgraph::visit::IntoNodeIdentifiers;
+use petgraph::Direction::{Incoming, Outgoing};
 
 use std::{
     collections::{HashSet, VecDeque},
@@ -24,18 +25,45 @@ pub(crate) fn core_network_with_patch<N: Clone, E: Distanceable>(
 
     drop(old_network);
 
+    next_network.recount();
+    println!("Recounted");
     while let Some(node) = queue.pop_front() {
-        let out_edges = next_network.edge_count_out(node) as f32;
-        let in_edges = next_network.edge_count_in(node) as f32;
+        if !next_network.graph.contains_node(node) {
+            continue;
+        }
 
-        let short_cuts = out_edges * in_edges;
-        let contraction = (out_edges + in_edges) * contraction_factor;
+        let out_edges = next_network.edge_count_out(node);
+        let in_edges = next_network.edge_count_in(node);
+
+        debug_assert_eq!(
+            next_network.edge_count_out(node),
+            next_network.edges_directed(node, Outgoing).count()
+        );
+        debug_assert_eq!(
+            next_network.edge_count_in(node),
+            next_network.edges_directed(node, Incoming).count()
+        );
+
+        let short_cuts = (out_edges * in_edges) as f32;
+        let contraction = (out_edges + in_edges) as f32 * contraction_factor;
+
+        if queue.queue.len() % 10000 == 0 {
+            println!(
+                "Si: {}, n: {}, e: {}, {} < {}",
+                queue.queue.len(),
+                next_network.node_count(),
+                next_network.edge_count(),
+                out_edges * in_edges,
+                (out_edges + in_edges) as f32 * contraction_factor,
+            );
+        }
 
         if short_cuts <= contraction {
-            let touched = next_network.bypass(node);
-            for touched in touched {
+            for touched in next_network.bypass(node) {
                 queue.push_back(touched);
             }
+        } else {
+            println!("does happen");
         }
     }
 

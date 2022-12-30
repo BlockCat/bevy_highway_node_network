@@ -1,10 +1,10 @@
 #![feature(map_try_insert)]
 #![feature(is_sorted)]
 
+pub mod count_stable_graph;
 pub mod iterators;
 pub mod neighbourhood;
 pub mod super_graph;
-pub mod count_stable_graph;
 
 use count_stable_graph::CountStableGraph;
 use iterators::Distanceable;
@@ -13,8 +13,9 @@ pub use neighbourhood::*;
 use petgraph::stable_graph::EdgeIndex;
 use petgraph::stable_graph::IndexType;
 use petgraph::stable_graph::NodeIndex;
-use petgraph::Direction;
 use petgraph::visit::EdgeRef;
+use petgraph::Direction::Incoming;
+use petgraph::Direction::Outgoing;
 use serde::Deserialize;
 use serde::Serialize;
 use super_graph::SuperGraph;
@@ -53,6 +54,31 @@ pub trait BypassNode {
 
 impl<N> BypassNode for IntermediateGraph<N, Shorted> {
     fn bypass(&mut self, node: HighwayNodeIndex) -> Vec<HighwayNodeIndex> {
+        // The node has no receiving edges. Only outgoing. Then remove the node.
+
+        if self.edge_count_out(node) == 0 {
+            self.remove_node(node);
+            return self
+                .edges_directed(node, Incoming)
+                .map(|x| {
+                    debug_assert_eq!(node, x.target());
+                    x.source()
+                })
+                .collect();
+        }
+
+        // The node has no outgoing edges. Only incoming. Then remove the node.
+        if self.edge_count_in(node) == 0 {
+            self.remove_node(node);
+            return self
+                .edges_directed(node, Outgoing)
+                .map(|x| {
+                    debug_assert_eq!(node, x.source());
+                    x.target()
+                })
+                .collect();
+        }
+
         let in_edges = self
             .edges_directed(node, petgraph::Direction::Incoming)
             .map(|e| {
@@ -62,32 +88,25 @@ impl<N> BypassNode for IntermediateGraph<N, Shorted> {
             .collect_vec();
 
         let out_edges = self
-            .edges_directed(node, petgraph::Direction::Outgoing)
+            .edges_directed(node, Outgoing)
             .map(|e| {
                 debug_assert_eq!(e.source(), node);
                 (e.target(), e.weight().clone())
             })
             .collect_vec();
 
-        // The node has no receiving edges. Only outgoing. Then remove the node.
-        if self.edges_directed(node, Direction::Outgoing).count() == 0 {
-            self.remove_node(node);
-            return vec![];
-        }
-
-        // The node has no outgoing edges. Only incoming. Then remove the node.
-        if self.edges_directed(node, Direction::Incoming).count() == 0 {
-            self.remove_node(node);
-            return vec![];
-        }
+        debug_assert_eq!(out_edges.len(), self.edge_count_out(node));
+        debug_assert_eq!(in_edges.len(), self.edge_count_in(node));
 
         let mut touched = Vec::new();
 
         for (source, source_shorted) in in_edges {
+            let mut changed = false;
             for (target, target_shorted) in &out_edges {
                 if &source == target {
                     continue;
                 }
+
                 // Connect source to target.
                 let combined_distance = source_shorted.distance() + target_shorted.distance();
 
@@ -97,7 +116,7 @@ impl<N> BypassNode for IntermediateGraph<N, Shorted> {
                 skipped_edges.extend(source_shorted.skipped_edges.clone());
                 skipped_edges.extend(target_shorted.skipped_edges.clone());
 
-                self.add_edge(
+                self.update_edge(
                     source,
                     *target,
                     Shorted {
@@ -106,9 +125,15 @@ impl<N> BypassNode for IntermediateGraph<N, Shorted> {
                     },
                 );
                 touched.push(*target);
+                changed = true;
             }
-            touched.push(source);
+
+            if changed {
+                touched.push(source);
+            }
         }
+
+        self.remove_node(node);
 
         touched
     }

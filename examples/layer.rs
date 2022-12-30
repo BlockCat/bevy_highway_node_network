@@ -52,7 +52,7 @@ fn main() {
             prev_layer.node_count(),
             prev_layer.edge_count()
         );
-        let next = calculate_layer(30, prev_layer.clone(), 3.0);
+        let next = calculate_layer(30, prev_layer.clone(), 2.0);
 
         write_file(&next, format!("data/{i}.graph")).expect("Could not write");
         layers.push(next);
