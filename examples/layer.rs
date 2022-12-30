@@ -35,26 +35,7 @@ fn main() {
         },
     );
 
-    println!(
-        "A- Connected: {} -- {} -- {}",
-        algo::connected_components(&Graph::from(network.clone())),
-        network.node_count(),
-        network.edge_count()
-    );
-
     let network = HighwayGraph::from(network);
-    let back = IntermediateGraph::from(network.clone());
-
-    println!(
-        "B- Connected: {} -- {} -- {}",
-        algo::connected_components(&Graph::from(back.clone())),
-        network.node_count(),
-        network.edge_count()
-    );
-
-    println!("C - ? {} -- {}", back.node_count(), back.edge_count());
-
-
 
     println!("Translated network");
     // panic!();

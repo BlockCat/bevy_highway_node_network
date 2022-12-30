@@ -14,8 +14,6 @@ use std::{
     slice,
 };
 
-use crate::HighwayNodeIndex;
-
 /// The graph's node type
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Node<N, Ix: IndexType> {
@@ -27,12 +25,6 @@ pub struct Node<N, Ix: IndexType> {
     pub next: [EdgeIndex<Ix>; 3],
 }
 
-impl<N, Ix: IndexType> Node<N, Ix> {
-    pub fn next_edge(&self, dir: Direction) -> EdgeIndex<Ix> {
-        self.next[dir.index()]
-    }
-}
-
 /// The graph's edge type.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Edge<E, Ix: IndexType> {
@@ -40,17 +32,6 @@ pub struct Edge<E, Ix: IndexType> {
     pub weight: E,
     /// Me -> Other
     node: [NodeIndex<Ix>; 2],
-}
-
-impl<E, Ix: IndexType> Edge<E, Ix> {
-    // /// Comes from
-    // pub fn source(&self) -> NodeIndex<Ix> {
-    //     self.node[0]
-    // }
-    /// Goes to
-    pub fn target(&self) -> NodeIndex<Ix> {
-        self.node[1]
-    }
 }
 
 /// Simple graph,
@@ -108,13 +89,14 @@ impl<N, E, Ix: IndexType> SuperGraph<N, E, Ix> {}
 pub struct Neighbors<'a, E: 'a, Ix: 'a + IndexType> {
     range: Range<usize>,
     edges: &'a [Edge<E, Ix>],
+    node: usize,
 }
 
 impl<'a, E, Ix: IndexType> Iterator for Neighbors<'a, E, Ix> {
     type Item = NodeIndex<Ix>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        self.range.next().map(|i| self.edges[i].target())
+        self.range.next().map(|i| self.edges[i].node[self.node])
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {
@@ -168,9 +150,15 @@ impl<'a, N, E, Ix: IndexType> visit::IntoNeighborsDirected for &'a SuperGraph<N,
             }
         };
 
+        let node = match dir {
+            Outgoing => 1,
+            Incoming => 0,
+        };
+
         Neighbors {
             range,
             edges: &self.edges,
+            node,
         }
     }
 }
@@ -377,103 +365,39 @@ impl<N: Clone, E: Clone, Ix: IndexType> From<SuperGraph<N, E, Ix>> for StableDiG
 /// Node indices are invalidated
 impl<N: Clone, E: Clone, Ix: IndexType> From<StableDiGraph<N, E, Ix>> for SuperGraph<N, E, Ix> {
     fn from(value: StableDiGraph<N, E, Ix>) -> Self {
-        let mut nodes = value
+        let old_to_new_nodes = value
             .node_identifiers()
-            .map(|n| {
-                let node = &value[n];
-
-                let out_edges_map = value
-                    .edges_directed(n, Outgoing)
-                    .map(|e| (e.target(), e))
-                    .collect::<HashMap<_, _>>();
-
-                let in_edges_map = value
-                    .edges_directed(n, Incoming)
-                    .map(|e| (e.source(), e))
-                    .collect::<HashMap<_, _>>();
-
-                let both_edges = out_edges_map
-                    .iter()
-                    .filter(|(e, _)| in_edges_map.contains_key(*e))
-                    .map(|x| x.1.clone())
-                    .collect_vec();
-
-                let out_edges = out_edges_map
-                    .iter()
-                    .filter(|(e, _)| !in_edges_map.contains_key(e))
-                    .map(|e| e.1.clone())
-                    .collect_vec();
-
-                let in_edges = in_edges_map
-                    .iter()
-                    .filter(|(e, _)| !out_edges_map.contains_key(e))
-                    .map(|e| e.1.clone())
-                    .collect_vec();
-
-                (n, node, out_edges, in_edges, both_edges)
-            })
-            .collect_vec();
-
-        nodes.sort_by_key(|x| x.0);
-
-        let mut graph = Self::default();
-
-        let old_to_new_node = nodes
-            .iter()
             .enumerate()
-            .map(|(new_index, old_index)| (old_index.0, NodeIndex::<Ix>::new(new_index)))
+            .map(|(ni, oid)| (oid, NodeIndex::<Ix>::new(ni)))
             .collect::<HashMap<_, _>>();
 
-        nodes
-            .into_iter()
-            .for_each(|(id, weight, out_edges, in_edges, both_edges)| {
-                let start_edge = graph.edges.len();
-                let mid_edge = start_edge + out_edges.len();
-                let end_edge = mid_edge + both_edges.len();
+        let mut graph = Self::default();
+        for node in value.node_identifiers() {
+            let out_edges = value.edges_directed(node, Outgoing).collect_vec();
+            let in_edges = value.edges_directed(node, Incoming).collect_vec();
 
-                graph.nodes.push(Node {
-                    weight: (*weight).clone(),
-                    next: [
-                        EdgeIndex::new(start_edge),
-                        EdgeIndex::new(mid_edge),
-                        EdgeIndex::new(end_edge),
-                    ],
-                });
+            let start_edge = graph.edge_count();
+            let mid_edge = start_edge + out_edges.len();
 
-                graph.edges.extend(out_edges.iter().map(|e| {
-                    debug_assert_eq!(e.source(), id);
-                    Edge {
-                        weight: e.weight().clone(),
-                        node: [old_to_new_node[&e.source()], old_to_new_node[&e.target()]],
-                    }
-                }));
-                graph.edges.extend(both_edges.iter().map(|e| {
-                    debug_assert_eq!(e.source(), id);
-                    Edge {
-                        weight: e.weight().clone(),
-                        node: [old_to_new_node[&e.source()], old_to_new_node[&e.target()]],
-                    }
-                }));
-                graph.edges.extend(in_edges.iter().map(|e| {
-                    debug_assert_eq!(e.target(), id);
-                    Edge {
-                        weight: e.weight().clone(),
-                        node: [old_to_new_node[&e.target()], old_to_new_node[&e.source()]],
-                    }
-                }));
-
-                assert_eq!(end_edge + in_edges.len(), graph.edge_count());
+            graph.nodes.push(Node {
+                weight: value[node].clone(),
+                next: [
+                    EdgeIndex::new(start_edge),
+                    EdgeIndex::new(mid_edge),
+                    EdgeIndex::new(mid_edge),
+                ],
             });
 
-        {
-            debug_assert!({
-                for x in graph.node_identifiers() {
-                    assert!(graph.edges_directed(x, Outgoing).all(|s| s.source() == x));
-                    assert!(graph.edges_directed(x, Incoming).all(|s| s.source() == x));
-                }
-                true
-            });
-            // println!("remove");
+            graph.edges.extend(out_edges.into_iter().map(|e| Edge {
+                weight: e.weight().clone(),
+                node: [old_to_new_nodes[&e.source()], old_to_new_nodes[&e.target()]],
+            }));
+
+            assert_eq!(mid_edge, graph.edge_count());
+            graph.edges.extend(in_edges.into_iter().map(|e| Edge {
+                weight: e.weight().clone(),
+                node: [old_to_new_nodes[&e.source()], old_to_new_nodes[&e.target()]],
+            }));
         }
 
         graph

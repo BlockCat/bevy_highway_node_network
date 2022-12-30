@@ -1,7 +1,6 @@
 #![feature(map_try_insert)]
 #![feature(is_sorted)]
 
-pub mod count_stable_graph;
 pub mod iterators;
 pub mod neighbourhood;
 pub mod super_graph;
@@ -25,7 +24,7 @@ use super_graph::SuperGraph;
 )]
 pub struct HighwayIndex(u32);
 
-pub type HighwayGraph<N, E> = SuperGraph<N, E, HighwayIndex>;
+pub type HighwayGraph<N, E> = StableDiGraph<N, E, HighwayIndex>;
 pub type IntermediateGraph<N, E> = StableDiGraph<N, E, HighwayIndex>;
 pub type HighwayNodeIndex = NodeIndex<HighwayIndex>;
 pub type HighwayEdgeIndex = EdgeIndex<HighwayIndex>;

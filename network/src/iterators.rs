@@ -1,6 +1,6 @@
 use crate::{HighwayGraph, HighwayNodeIndex};
-use petgraph::Direction::Incoming;
 use petgraph::visit::*;
+use petgraph::Direction::Incoming;
 use petgraph::{visit::EdgeRef, Direction::Outgoing};
 use std::collections::{BinaryHeap, HashSet};
 
@@ -52,6 +52,7 @@ impl<N, E> DijkstraIterator<N, E> for HighwayGraph<N, E> {
             distance: 0.0,
             node,
         });
+
         ForwardDijkstraIterator {
             network: self,
             distance: 0.0,
@@ -66,6 +67,7 @@ impl<N, E> DijkstraIterator<N, E> for HighwayGraph<N, E> {
             distance: 0.0,
             node,
         });
+
         BackwardDijkstraIterator {
             network: self,
             distance: 0.0,
@@ -101,6 +103,7 @@ where
                 continue;
             }
             for edge in self.network.edges_directed(node, Outgoing) {
+                assert_eq!(edge.source(), node);
                 let target = edge.target();
                 let edge_distance = edge.weight().distance();
 
@@ -131,6 +134,7 @@ where
                 continue;
             }
             for edge in self.network.edges_directed(node, Incoming) {
+                assert_eq!(edge.target(), node);
                 let target = edge.source();
                 let edge_distance = edge.weight().distance();
 
