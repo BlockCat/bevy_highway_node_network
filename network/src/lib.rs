@@ -4,19 +4,17 @@
 pub mod iterators;
 pub mod neighbourhood;
 pub mod super_graph;
+pub mod count_stable_graph;
 
+use count_stable_graph::CountStableGraph;
 use iterators::Distanceable;
 use itertools::Itertools;
 pub use neighbourhood::*;
-
 use petgraph::stable_graph::EdgeIndex;
 use petgraph::stable_graph::IndexType;
 use petgraph::stable_graph::NodeIndex;
-use petgraph::stable_graph::StableDiGraph;
-use petgraph::visit::EdgeRef;
-
-use petgraph::visit::IntoEdgesDirected;
 use petgraph::Direction;
+use petgraph::visit::EdgeRef;
 use serde::Deserialize;
 use serde::Serialize;
 use super_graph::SuperGraph;
@@ -24,24 +22,24 @@ use super_graph::SuperGraph;
 #[derive(
     Debug, Clone, Copy, Hash, PartialEq, Eq, PartialOrd, Ord, Default, Serialize, Deserialize,
 )]
-pub struct HighwayIndex(usize);
+pub struct HighwayIndex(u32);
 
 pub type HighwayGraph<N, E> = SuperGraph<N, E, HighwayIndex>;
-pub type IntermediateGraph<N, E> = StableDiGraph<N, E, HighwayIndex>;
+pub type IntermediateGraph<N, E> = CountStableGraph<N, E, HighwayIndex>;
 pub type HighwayNodeIndex = NodeIndex<HighwayIndex>;
 pub type HighwayEdgeIndex = EdgeIndex<HighwayIndex>;
 
 unsafe impl IndexType for HighwayIndex {
     fn new(x: usize) -> Self {
-        Self(x)
+        Self(x as u32)
     }
 
     fn index(&self) -> usize {
-        self.0
+        self.0 as usize
     }
 
     fn max() -> Self {
-        HighwayIndex(usize::MAX)
+        HighwayIndex(u32::MAX)
     }
 }
 

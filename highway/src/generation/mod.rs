@@ -4,7 +4,7 @@ use network::{
 };
 use petgraph::visit::*;
 use rayon::prelude::*;
-use std::collections::{HashMap, HashSet};
+use std::collections::{HashSet};
 
 pub mod core;
 pub mod dag;
@@ -65,9 +65,13 @@ where
 /// Phase 1: ... ?
 pub(crate) fn phase_1<N: Send + Sync + Clone, E: Send + Sync + Clone + Distanceable>(
     size: usize,
-    mut network: HighwayGraph<N, E>,
+    network: HighwayGraph<N, E>,
 ) -> IntermediateGraph<N, E> {
-    println!("Start computing (forward backward)");
+    println!(
+        "Start computing (forward backward): {}, {}",
+        network.node_count(),
+        network.edge_count()
+    );
 
     let (duration, computed) = stopwatch!(ComputedState::new(size, &network));
 
@@ -88,33 +92,33 @@ pub(crate) fn phase_1<N: Send + Sync + Clone, E: Send + Sync + Clone + Distancea
 
     println!("Got retained edges");
 
-    let mut new_network = IntermediateGraph::default();
+    let mut new_network = IntermediateGraph::from(network);
 
-    let mut nodes = edges
-        .iter()
-        .flat_map(|e| {
-            let edge = network.edge_reference(*e);
-            [
-                (edge.source(), &network[edge.source()]),
-                (edge.target(), &network[edge.target()]),
-            ]
-        })
-        .collect::<Vec<_>>();
+    // let mut nodes = edges
+    //     .iter()
+    //     .flat_map(|e| {
+    //         let edge = network.edge_reference(*e);
+    //         [
+    //             (edge.source(), &network[edge.source()]),
+    //             (edge.target(), &network[edge.target()]),
+    //         ]
+    //     })
+    //     .collect::<Vec<_>>();
 
-    nodes.dedup_by_key(|x| x.0);
-    nodes.sort_by_key(|x| x.0);
+    // nodes.dedup_by_key(|x| x.0);
+    // nodes.sort_by_key(|x| x.0);
 
-    for (node, we) in nodes {
-        let a = new_network.add_node(we.clone());
-        assert_eq!(a, node);
-    }
+    // for (node, we) in nodes {
+    //     let a = new_network.add_node(we.clone());
+    //     assert_eq!(a, node);
+    // }
 
-    for edge in edges {
-        let edge = network.edge_reference(edge);
-        new_network.update_edge(edge.source(), edge.target(), edge.weight().clone());
-    }
+    // for edge in edges {
+    //     let edge = network.edge_reference(edge);
+    //     new_network.update_edge(edge.source(), edge.target(), edge.weight().clone());
+    // }
 
-    // network.retain_edges(|_, e| edges.contains(&e));
+    new_network.retain_edges(|_, e| edges.contains(&e));
 
     println!("Finished computing (edges collections)");
 

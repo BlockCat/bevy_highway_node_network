@@ -1,6 +1,6 @@
 use bevy::math::Vec2;
 use bevy_shapefile::{JunctionId, RoadId, RoadMap};
-use network::{HighwayEdgeIndex, HighwayGraph, HighwayNodeIndex, IntermediateGraph};
+use network::{HighwayEdgeIndex, HighwayNodeIndex, IntermediateGraph};
 use rusqlite::{
     types::{FromSql, FromSqlError},
     Connection,

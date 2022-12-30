@@ -6,8 +6,6 @@ use bevy::prelude::*;
 use bevy_egui::EguiPlugin;
 use bevy_shapefile::RoadMap;
 pub use layers::PreProcess;
-
-use petgraph::visit::IntoNodeReferences;
 use std::{
     collections::HashSet,
     ops::{Deref, DerefMut},

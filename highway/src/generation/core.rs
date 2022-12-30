@@ -1,7 +1,7 @@
 use network::{iterators::Distanceable, HighwayNodeIndex};
 use network::{BypassNode, IntermediateGraph, Shorted};
 use petgraph::visit::IntoNodeIdentifiers;
-use petgraph::Direction;
+
 use std::{
     collections::{HashSet, VecDeque},
     hash::Hash,
@@ -25,17 +25,13 @@ pub(crate) fn core_network_with_patch<N: Clone, E: Distanceable>(
     drop(old_network);
 
     while let Some(node) = queue.pop_front() {
-        let out_edges = next_network
-            .edges_directed(node, Direction::Outgoing)
-            .count() as f32;
-        let in_edges = next_network
-            .edges_directed(node, Direction::Outgoing)
-            .count() as f32;
+        let out_edges = next_network.edge_count_out(node) as f32;
+        let in_edges = next_network.edge_count_in(node) as f32;
 
         let short_cuts = out_edges * in_edges;
         let contraction = (out_edges + in_edges) * contraction_factor;
 
-        if short_cuts < contraction {
+        if short_cuts <= contraction {
             let touched = next_network.bypass(node);
             for touched in touched {
                 queue.push_back(touched);
@@ -71,8 +67,7 @@ impl<T: Hash + Eq + Copy> HashNodeQueue<T> {
     }
 
     fn push_back(&mut self, value: T) {
-        if !self.contains(&value) {
-            self.seen.insert(value);
+        if self.seen.insert(value) {
             self.queue.push_back(value);
         }
     }
