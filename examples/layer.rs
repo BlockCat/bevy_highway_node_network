@@ -1,8 +1,9 @@
 use bevy_dutch_road_highway_node_network::{nwb::NwbGraph, read_file, write_file};
 use bevy_shapefile::{RoadId, RoadMap};
 use highway::generation::calculate_layer;
-use network::{iterators::Distanceable, HighwayGraph};
+use network::{iterators::Distanceable, HighwayGraph, IntermediateGraph};
 
+use petgraph::{algo, Graph};
 use rayon::join;
 
 #[derive(Debug, Clone)]
@@ -34,9 +35,29 @@ fn main() {
         },
     );
 
+    println!(
+        "A- Connected: {} -- {} -- {}",
+        algo::connected_components(&Graph::from(network.clone())),
+        network.node_count(),
+        network.edge_count()
+    );
+
     let network = HighwayGraph::from(network);
+    let back = IntermediateGraph::from(network.clone());
+
+    println!(
+        "B- Connected: {} -- {} -- {}",
+        algo::connected_components(&Graph::from(back.clone())),
+        network.node_count(),
+        network.edge_count()
+    );
+
+    println!("C - ? {} -- {}", back.node_count(), back.edge_count());
+
+
 
     println!("Translated network");
+    // panic!();
 
     let mut layers = vec![calculate_layer(30, network.clone(), 2.0)];
 

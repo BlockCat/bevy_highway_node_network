@@ -83,7 +83,7 @@ where
     F: Fn(NwbNodeIndex, NwbNodeIndex) -> f32,
 {
     let path = algo::astar(
-        &graph.graph,
+        graph,
         source,
         |finish| finish == target,
         |e| edge_cost(e.weight()),

@@ -1,5 +1,4 @@
 use petgraph::{
-    data::Build,
     graph::Frozen,
     stable_graph::{
         EdgeIndex, EdgeReference, EdgeReferences, Edges, IndexType, NodeIndex, NodeIndices,
@@ -9,7 +8,7 @@ use petgraph::{
     Direction, IntoWeightedEdge,
 };
 use serde::{Deserialize, Serialize};
-use std::{collections::HashMap, ops::Index, slice::SliceIndex};
+use std::{collections::HashMap, ops::Index};
 
 use crate::iterators::Distanceable;
 
@@ -30,18 +29,18 @@ impl<N, E, Ix: IndexType> Default for CountStableGraph<N, E, Ix> {
     }
 }
 
-impl<N, E: Distanceable, Ix: IndexType> CountStableGraph<N, E, Ix> {
-    pub fn update_edge(&mut self, a: NodeIndex<Ix>, b: NodeIndex<Ix>, weight: E) -> EdgeIndex<Ix> {
-        if let Some(ix) = self.find_edge(a, b) {
-            let ow = self.graph[ix].distance();
-            if weight.distance() < ow {
-                self.graph[ix] = weight;
-            }
-            return ix;
-        }
-        self.add_edge(a, b, weight)
-    }
-}
+// impl<N, E: Distanceable, Ix: IndexType> CountStableGraph<N, E, Ix> {
+//     pub fn update_edge(&mut self, a: NodeIndex<Ix>, b: NodeIndex<Ix>, weight: E) -> EdgeIndex<Ix> {
+//         if let Some(ix) = self.find_edge(a, b) {
+//             let ow = self.graph[ix].distance();
+//             if weight.distance() < ow {
+//                 self.graph[ix] = weight;
+//             }
+//             return ix;
+//         }
+//         self.add_edge(a, b, weight)
+//     }
+// }
 
 impl<N, E, Ix: IndexType> CountStableGraph<N, E, Ix> {
     pub fn edges_directed(

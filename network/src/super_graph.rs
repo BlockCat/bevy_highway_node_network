@@ -1,3 +1,11 @@
+use itertools::Itertools;
+use petgraph::{
+    stable_graph::{DefaultIx, EdgeIndex, IndexType, NodeIndex, StableDiGraph},
+    visit::{self, EdgeRef, IntoEdgesDirected, IntoNeighborsDirected, IntoNodeIdentifiers},
+    Directed,
+    Direction::{self, Incoming, Outgoing},
+};
+use serde::{Deserialize, Serialize};
 use std::{
     collections::HashMap,
     iter::Enumerate,
@@ -6,27 +14,16 @@ use std::{
     slice,
 };
 
-use itertools::Itertools;
-use petgraph::{
-    stable_graph::{DefaultIx, EdgeIndex, IndexType, NodeIndex},
-    visit::{
-        self, EdgeRef, IntoEdgesDirected, IntoNeighborsDirected, IntoNodeIdentifiers, NodeCount,
-    },
-    Directed,
-    Direction::{self, Incoming, Outgoing},
-};
-use serde::{Deserialize, Serialize};
-
-use crate::count_stable_graph::CountStableGraph;
+use crate::HighwayNodeIndex;
 
 /// The graph's node type
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Node<N, Ix: IndexType> {
     /// Associated node data
     pub weight: N,
-    /// Next outgoing edge
-    /// Next incoming edge, starts at first bothways edge
-    /// Final outgoing edge (exclusive) also start of first incoming only edge
+    /// 1. Next outgoing edge
+    /// 2. Next incoming edge, starts at first bothways edge
+    /// 3. Final outgoing edge (exclusive) also start of first incoming only edge
     pub next: [EdgeIndex<Ix>; 3],
 }
 
@@ -46,10 +43,10 @@ pub struct Edge<E, Ix: IndexType> {
 }
 
 impl<E, Ix: IndexType> Edge<E, Ix> {
-    /// Comes from
-    pub fn source(&self) -> NodeIndex<Ix> {
-        self.node[0]
-    }
+    // /// Comes from
+    // pub fn source(&self) -> NodeIndex<Ix> {
+    //     self.node[0]
+    // }
     /// Goes to
     pub fn target(&self) -> NodeIndex<Ix> {
         self.node[1]
@@ -102,53 +99,6 @@ impl<N, E, Ix: IndexType> SuperGraph<N, E, Ix> {
     }
     pub fn edge_count(&self) -> usize {
         self.edges.len()
-    }
-    #[inline]
-    pub fn is_directed(&self) -> bool {
-        true
-    }
-
-    pub fn edge_reference(&self, e: EdgeIndex<Ix>) -> EdgeReference<'_, E, Ix> {
-        EdgeReference {
-            index: e,
-            node: self.edges[e.index()].node.clone(),
-            weight: &self.edges[e.index()].weight,
-        }
-    }
-
-    pub fn node_weight(&self, a: NodeIndex<Ix>) -> Option<&N> {
-        self.nodes.get(a.index()).map(|n| &n.weight)
-    }
-    pub fn node_weight_mut(&mut self, a: NodeIndex<Ix>) -> Option<&mut N> {
-        self.nodes.get_mut(a.index()).map(|n| &mut n.weight)
-    }
-
-    pub fn node_weights(&self) -> impl Iterator<Item = &N> {
-        self.nodes.iter().map(|n| &n.weight)
-    }
-
-    pub fn edge_weight(&self, a: EdgeIndex<Ix>) -> Option<&E> {
-        self.edges.get(a.index()).map(|e| &e.weight)
-    }
-    pub fn edge_weight_mut(&mut self, a: EdgeIndex<Ix>) -> Option<&mut E> {
-        self.edges.get_mut(a.index()).map(|e| &mut e.weight)
-    }
-    pub fn edge_endpoints(&self, a: EdgeIndex<Ix>) -> Option<(NodeIndex<Ix>, NodeIndex<Ix>)> {
-        self.edges.get(a.index()).map(|e| (e.source(), e.target()))
-    }
-
-    pub fn neighbors_undirected(&self, a: NodeIndex<Ix>) -> Neighbors<E, Ix> {
-        let node = self.nodes[a.index()].next[0];
-        let next_node = self
-            .nodes
-            .get(a.index())
-            .map(|x| x.next[0])
-            .unwrap_or(EdgeIndex::new(self.edges.len()));
-
-        Neighbors {
-            range: node.index()..next_node.index(),
-            edges: &self.edges,
-        }
     }
 }
 
@@ -403,13 +353,15 @@ impl<'a, E, Ix: IndexType> Iterator for EdgeReferences<'a, E, Ix> {
 }
 
 /// Node indices are not invalidated
-impl<N: Clone, E: Clone, Ix: IndexType> From<SuperGraph<N, E, Ix>> for CountStableGraph<N, E, Ix> {
+impl<N: Clone, E: Clone, Ix: IndexType> From<SuperGraph<N, E, Ix>> for StableDiGraph<N, E, Ix> {
     fn from(value: SuperGraph<N, E, Ix>) -> Self {
         let mut graph = Self::default();
 
         for weight in &value.nodes {
             graph.add_node(weight.weight.clone());
         }
+
+        assert_eq!(value.node_count(), graph.node_count());
 
         for index in value.node_identifiers() {
             for o in value.edges_directed(index, Outgoing) {
@@ -423,22 +375,21 @@ impl<N: Clone, E: Clone, Ix: IndexType> From<SuperGraph<N, E, Ix>> for CountStab
 }
 
 /// Node indices are invalidated
-impl<N: Clone, E: Clone, Ix: IndexType> From<CountStableGraph<N, E, Ix>> for SuperGraph<N, E, Ix> {
-    fn from(value: CountStableGraph<N, E, Ix>) -> Self {
-        let mut graph = Self::default();
-
-        let nodes = value
+impl<N: Clone, E: Clone, Ix: IndexType> From<StableDiGraph<N, E, Ix>> for SuperGraph<N, E, Ix> {
+    fn from(value: StableDiGraph<N, E, Ix>) -> Self {
+        let mut nodes = value
             .node_identifiers()
             .map(|n| {
                 let node = &value[n];
+
                 let out_edges_map = value
                     .edges_directed(n, Outgoing)
-                    .map(|e| (e.id(), e))
+                    .map(|e| (e.target(), e))
                     .collect::<HashMap<_, _>>();
 
                 let in_edges_map = value
                     .edges_directed(n, Incoming)
-                    .map(|e| (e.id(), e))
+                    .map(|e| (e.source(), e))
                     .collect::<HashMap<_, _>>();
 
                 let both_edges = out_edges_map
@@ -463,14 +414,23 @@ impl<N: Clone, E: Clone, Ix: IndexType> From<CountStableGraph<N, E, Ix>> for Sup
             })
             .collect_vec();
 
-        let old_to_node = nodes
+        nodes.sort_by_key(|x| x.0);
+
+        let mut graph = Self::default();
+
+        let old_to_new_node = nodes
             .iter()
-            .map(|(id, weight, out_edges, in_edges, both_edges)| {
+            .enumerate()
+            .map(|(new_index, old_index)| (old_index.0, NodeIndex::<Ix>::new(new_index)))
+            .collect::<HashMap<_, _>>();
+
+        nodes
+            .into_iter()
+            .for_each(|(id, weight, out_edges, in_edges, both_edges)| {
                 let start_edge = graph.edges.len();
                 let mid_edge = start_edge + out_edges.len();
                 let end_edge = mid_edge + both_edges.len();
-                let old_index = *id;
-                let new_index = NodeIndex::<Ix>::new(graph.node_count());
+
                 graph.nodes.push(Node {
                     weight: (*weight).clone(),
                     next: [
@@ -481,33 +441,39 @@ impl<N: Clone, E: Clone, Ix: IndexType> From<CountStableGraph<N, E, Ix>> for Sup
                 });
 
                 graph.edges.extend(out_edges.iter().map(|e| {
-                    debug_assert_eq!(e.source(), *id);
+                    debug_assert_eq!(e.source(), id);
                     Edge {
                         weight: e.weight().clone(),
-                        node: [e.source(), e.target()],
+                        node: [old_to_new_node[&e.source()], old_to_new_node[&e.target()]],
                     }
                 }));
                 graph.edges.extend(both_edges.iter().map(|e| {
-                    debug_assert_eq!(e.source(), *id);
+                    debug_assert_eq!(e.source(), id);
                     Edge {
                         weight: e.weight().clone(),
-                        node: [e.source(), e.target()],
+                        node: [old_to_new_node[&e.source()], old_to_new_node[&e.target()]],
                     }
                 }));
                 graph.edges.extend(in_edges.iter().map(|e| {
-                    debug_assert_eq!(e.target(), *id);
+                    debug_assert_eq!(e.target(), id);
                     Edge {
                         weight: e.weight().clone(),
-                        node: [e.target(), e.source()],
+                        node: [old_to_new_node[&e.target()], old_to_new_node[&e.source()]],
                     }
                 }));
-                (old_index, new_index)
-            })
-            .collect::<HashMap<_, _>>();
 
-        for edge in &mut graph.edges {
-            edge.node[0] = old_to_node[&edge.node[0]];
-            edge.node[1] = old_to_node[&edge.node[1]];
+                assert_eq!(end_edge + in_edges.len(), graph.edge_count());
+            });
+
+        {
+            debug_assert!({
+                for x in graph.node_identifiers() {
+                    assert!(graph.edges_directed(x, Outgoing).all(|s| s.source() == x));
+                    assert!(graph.edges_directed(x, Incoming).all(|s| s.source() == x));
+                }
+                true
+            });
+            // println!("remove");
         }
 
         graph
