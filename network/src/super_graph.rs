@@ -26,7 +26,7 @@ pub struct Node<N, Ix: IndexType> {
 }
 
 /// The graph's edge type.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Edge<E, Ix: IndexType> {
     /// Associated edge data.
     pub weight: E,
@@ -150,10 +150,11 @@ impl<'a, N, E, Ix: IndexType> visit::IntoNeighborsDirected for &'a SuperGraph<N,
             }
         };
 
-        let node = match dir {
-            Outgoing => 1,
-            Incoming => 0,
-        };
+        let node = 1 - dir.index();
+
+        debug_assert!(self.edges[range.clone()]
+            .iter()
+            .all(|s| s.node[dir.index()] == a));
 
         Neighbors {
             range,
@@ -184,10 +185,22 @@ impl<'a, N, E, Ix: IndexType> visit::IntoEdges for &'a SuperGraph<N, E, Ix> {
 impl<'a, N, E, Ix: IndexType> visit::IntoEdgesDirected for &'a SuperGraph<N, E, Ix> {
     type EdgesDirected = Edges<'a, E, Ix>;
 
-    fn edges_directed(self, a: Self::NodeId, _dir: Direction) -> Self::EdgesDirected {
+    fn edges_directed(self, a: Self::NodeId, dir: Direction) -> Self::EdgesDirected {
         let node = &self.nodes[a.index()];
+        let range = match dir {
+            Outgoing => node.next[0].index()..node.next[2].index(),
+            Incoming => {
+                node.next[1].index()
+                    ..self
+                        .nodes
+                        .get(a.index() + 1)
+                        .map(|n| n.next[0].index())
+                        .unwrap_or(self.edge_count())
+            }
+        };
+
         Edges {
-            range: node.next[0].index()..node.next[2].index(),
+            range,
             edges: &self.edges,
         }
     }
@@ -373,8 +386,11 @@ impl<N: Clone, E: Clone, Ix: IndexType> From<StableDiGraph<N, E, Ix>> for SuperG
 
         let mut graph = Self::default();
         for node in value.node_identifiers() {
-            let out_edges = value.edges_directed(node, Outgoing).collect_vec();
-            let in_edges = value.edges_directed(node, Incoming).collect_vec();
+            let mut out_edges = value.edges_directed(node, Outgoing).collect_vec();
+            let mut in_edges = value.edges_directed(node, Incoming).collect_vec();
+
+            out_edges.sort_by_key(|e| (e.source(), e.target()));
+            in_edges.sort_by_key(|e| (e.source(), e.target()));
 
             let start_edge = graph.edge_count();
             let mid_edge = start_edge + out_edges.len();
@@ -388,18 +404,233 @@ impl<N: Clone, E: Clone, Ix: IndexType> From<StableDiGraph<N, E, Ix>> for SuperG
                 ],
             });
 
-            graph.edges.extend(out_edges.into_iter().map(|e| Edge {
-                weight: e.weight().clone(),
-                node: [old_to_new_nodes[&e.source()], old_to_new_nodes[&e.target()]],
+            graph.edges.extend(out_edges.into_iter().map(|e| {
+                assert_eq!(e.source(), node);
+                Edge {
+                    weight: e.weight().clone(),
+                    node: [old_to_new_nodes[&e.source()], old_to_new_nodes[&e.target()]],
+                }
             }));
 
             assert_eq!(mid_edge, graph.edge_count());
-            graph.edges.extend(in_edges.into_iter().map(|e| Edge {
-                weight: e.weight().clone(),
-                node: [old_to_new_nodes[&e.source()], old_to_new_nodes[&e.target()]],
+            graph.edges.extend(in_edges.into_iter().map(|e| {
+                assert_eq!(e.target(), node);
+                Edge {
+                    weight: e.weight().clone(),
+                    node: [old_to_new_nodes[&e.source()], old_to_new_nodes[&e.target()]],
+                }
             }));
         }
 
         graph
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use itertools::Itertools;
+    use petgraph::{
+        stable_graph::NodeIndex,
+        visit::{IntoEdgesDirected, IntoNeighborsDirected},
+    };
+
+    use crate::{super_graph::Edge, HighwayNodeIndex, IntermediateGraph};
+
+    use super::SuperGraph;
+
+    // https://i.stack.imgur.com/hF3mQ.png
+    fn create_graph() -> SuperGraph<char, f32, crate::HighwayIndex> {
+        let mut graph = IntermediateGraph::default();
+
+        let node = [
+            graph.add_node('A'), // 0, A
+            graph.add_node('B'), // 1, B
+            graph.add_node('C'), // 2, C
+            graph.add_node('D'), // 3, D
+            graph.add_node('E'), // 4, E
+            graph.add_node('F'), // 5, F
+        ];
+
+        graph.extend_with_edges([
+            (node[0], node[4], 0.1),
+            (node[0], node[5], 0.9),
+            (node[1], node[0], 0.3),
+            (node[1], node[3], 0.4),
+            (node[1], node[2], 0.3),
+            (node[2], node[4], 0.4),
+            (node[2], node[3], 0.6),
+            (node[3], node[4], 1.0),
+            (node[4], node[5], 0.45),
+            (node[4], node[0], 0.55),
+            (node[5], node[3], 1.0),
+        ]);
+
+        SuperGraph::from(graph)
+    }
+
+    #[test]
+    fn test_conversion_nodes() {
+        let graph = create_graph();
+        let gnodes = graph
+            .nodes
+            .iter()
+            .map(|n| {
+                (
+                    n.weight,
+                    [n.next[0].index(), n.next[1].index(), n.next[2].index()],
+                )
+            })
+            .collect_vec();
+
+        assert_eq!(
+            gnodes,
+            vec![
+                ('A', [0, 2, 2]),
+                ('B', [4, 7, 7]),
+                ('C', [7, 9, 9]),
+                ('D', [10, 11, 11]),
+                ('E', [14, 16, 16]),
+                ('F', [19, 20, 20]),
+            ]
+        );
+        assert_eq!(graph.edge_count(), 22);
+    }
+
+    #[test]
+    fn test_conversion_edges() {
+        let graph = create_graph();
+        let edges = graph.edges;
+
+        macro_rules! assert_edge {
+            ($num:expr => ($weight:expr, $s:expr, $t: expr)) => {
+                assert_eq!(
+                    edges[$num],
+                    Edge {
+                        weight: $weight,
+                        node: [HighwayNodeIndex::new($s), HighwayNodeIndex::new($t)]
+                    }
+                );
+            };
+        }
+        assert_edge!(0 => (0.1, 0, 4));
+        assert_edge!(1 =>  (0.9, 0, 5));
+        assert_edge!(2 =>  (0.3, 1, 0));
+        assert_edge!(3 =>  (0.55, 4, 0));
+        assert_edge!(4 =>  (0.3, 1, 0));
+        assert_edge!(5 =>  (0.3, 1, 2));
+        assert_edge!(6 =>  (0.4, 1, 3));
+        assert_edge!(7 =>  (0.6, 2, 3));
+        assert_edge!(8 =>  (0.4, 2, 4));
+        assert_edge!(9 =>  (0.3, 1, 2));
+        assert_edge!(10 =>  (1.0, 3, 4));
+        assert_edge!(11 =>  (0.4, 1, 3));
+        assert_edge!(12 =>  (0.6, 2, 3));
+        assert_edge!(13 =>  (1.0, 5, 3));
+        assert_edge!(14 =>  (0.55, 4, 0));
+        assert_edge!(15 =>  (0.45, 4, 5));
+        assert_edge!(16 =>  (0.1, 0, 4));
+        assert_edge!(17 =>  (0.4, 2, 4));
+        assert_edge!(18 =>  (1.0, 3, 4));
+        assert_edge!(19 =>  (1.0, 5, 3));
+        assert_edge!(20 =>  (0.9, 0, 5));
+        assert_edge!(21 =>  (0.45, 4, 5));
+
+        assert_eq!(edges.len(), 22);
+    }
+
+    #[test]
+    fn test_neighbor_directed_out() {
+        let graph = create_graph();
+
+        macro_rules! test_neighbours {
+            ($index:expr => [$($e:expr),*]) => {
+                assert_eq!(
+                    graph
+                        .neighbors_directed(NodeIndex::new($index), petgraph::Direction::Outgoing)
+                        .collect_vec(),
+                    vec![$(
+                        NodeIndex::new($e)
+                    ),*]
+                )
+            };
+        }
+
+        test_neighbours!(0 => [4, 5]);
+        test_neighbours!(1 => [0, 2, 3]);
+        test_neighbours!(2 => [3, 4]);
+        test_neighbours!(3 => [4]);
+        test_neighbours!(4 => [0, 5]);
+        test_neighbours!(5 => [3]);
+    }
+
+    #[test]
+    fn test_edges_directed_out() {
+        let graph = create_graph();
+
+        macro_rules! test_edges {
+            ($index:expr => [$(($a:expr, $b:expr, $c:expr)),*]) => {
+                assert_eq!(graph
+                    .edges_directed(NodeIndex::new($index), petgraph::Direction::Outgoing)
+                    .map(|x| (*x.weight(), x.node[0], x.node[1]))
+                    .collect_vec(),
+                    vec![$(($a, NodeIndex::new($b), NodeIndex::new($c))),*]
+                );
+            };
+        }
+
+        test_edges!(0 => [(0.1, 0, 4), (0.9, 0, 5)]);
+        test_edges!(1 => [(0.3, 1, 0), (0.3, 1, 2), (0.4, 1, 3)]);
+        test_edges!(2 => [(0.6, 2, 3), (0.4, 2, 4)]);
+        test_edges!(3 => [(1.0, 3, 4)]);
+        test_edges!(4 => [(0.55, 4, 0), (0.45, 4, 5)]);
+        test_edges!(5 => [(1.0, 5, 3)]);
+    }
+
+    #[test]
+    fn test_neighbor_directed_in() {
+        let graph = create_graph();
+
+        macro_rules! test_neighbours {
+            ($index:expr => [$($e:expr),*]) => {
+                assert_eq!(
+                    graph
+                        .neighbors_directed(NodeIndex::new($index), petgraph::Direction::Incoming)
+                        .collect_vec(),
+                    vec![$(
+                        NodeIndex::new($e)
+                    ),*]
+                )
+            };
+        }
+
+        test_neighbours!(0 => [1, 4]);
+        test_neighbours!(1 => []);
+        test_neighbours!(2 => [1]);
+        test_neighbours!(3 => [1,2,5]);
+        test_neighbours!(4 => [0, 2, 3]);
+        test_neighbours!(5 => [0, 4]);
+    }
+
+    #[test]
+    fn test_edges_directed_in() {
+        let graph = create_graph();
+
+        macro_rules! test_edges {
+            ($index:expr => [$(($a:expr, $b:expr, $c:expr)),*]) => {
+                assert_eq!(graph
+                    .edges_directed(NodeIndex::new($index), petgraph::Direction::Incoming)
+                    .map(|x| (*x.weight(), x.node[0], x.node[1]))
+                    .collect_vec(),
+                    vec![$(($a, NodeIndex::new($b), NodeIndex::new($c))),*]
+                );
+            };
+        }
+
+        test_edges!(0 => [(0.3, 1, 0), (0.55, 4, 0)]);
+        test_edges!(1 => []);
+        test_edges!(2 => [(0.3, 1, 2)]);
+        test_edges!(3 => [(0.4, 1, 3), (0.6, 2, 3), (1.0, 5, 3)]);
+        test_edges!(4 => [(0.1, 0, 4), (0.4, 2, 4), (1.0, 3, 4)]);
+        test_edges!(5 => [(0.9, 0, 5), (0.45, 4, 5)]);
     }
 }

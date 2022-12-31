@@ -3,7 +3,11 @@ use bevy_shapefile::{RoadId, RoadMap};
 use highway::generation::calculate_layer;
 use network::{iterators::Distanceable, HighwayGraph, IntermediateGraph};
 
-use petgraph::{algo, Graph};
+use petgraph::{
+    algo,
+    visit::{EdgeRef, IntoEdgesDirected, IntoNeighborsDirected, IntoNodeIdentifiers},
+    Graph,
+};
 use rayon::join;
 
 #[derive(Debug, Clone)]
@@ -38,7 +42,15 @@ fn main() {
     let network = HighwayGraph::from(network);
 
     println!("Translated network");
-    // panic!();
+
+    for ni in network.node_identifiers() {
+        assert!(network
+            .edges_directed(ni, petgraph::Direction::Outgoing)
+            .all(|s| s.source() == ni));
+        assert!(network
+            .edges_directed(ni, petgraph::Direction::Incoming)
+            .all(|s| s.target() == ni));
+    }
 
     let mut layers = vec![calculate_layer(30, network.clone(), 2.0)];
 

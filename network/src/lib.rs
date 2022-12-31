@@ -76,7 +76,7 @@ impl<N> BypassNode for IntermediateGraph<N, Shorted> {
             return self
                 .edges_directed(node, Incoming)
                 .map(|x| {
-                    debug_assert_eq!(node, x.target());
+                    assert_eq!(node, x.target());
                     x.source()
                 })
                 .collect();
@@ -88,7 +88,7 @@ impl<N> BypassNode for IntermediateGraph<N, Shorted> {
             return self
                 .edges_directed(node, Outgoing)
                 .map(|x| {
-                    debug_assert_eq!(node, x.source());
+                    assert_eq!(node, x.source());
                     x.target()
                 })
                 .collect();

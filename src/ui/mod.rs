@@ -6,6 +6,7 @@ use bevy::prelude::*;
 use bevy_egui::EguiPlugin;
 use bevy_shapefile::RoadMap;
 pub use layers::PreProcess;
+use network::HighwayNodeIndex;
 use petgraph::visit::IntoNodeReferences;
 use std::{
     collections::HashSet,
@@ -39,6 +40,8 @@ impl DerefMut for DirectedNetworkGraphContainer {
 impl Plugin for HighwayUiPlugin {
     fn build(&self, app: &mut bevy::prelude::App) {
         app.add_plugin(EguiPlugin)
+            .add_plugin(route::RouteUIPlugin)
+            .add_event::<PointClickedEvent>()
             .insert_resource(LayerState {
                 preprocess_layers: 6,
                 neighbourhood_size: 30,
@@ -59,6 +62,8 @@ fn point_system(
     network: Res<DirectedNetworkGraphContainer>,
     road_map: Res<RoadMap>,
     camera_q: Query<(&GlobalTransform, &Camera)>,
+    mut event_writer: EventWriter<PointClickedEvent>,
+    buttons: Res<Input<MouseButton>>,
     mut query: Query<&mut WorldEntity>,
 ) {
     if let Some(window) = windows.get_primary() {
@@ -97,7 +102,14 @@ fn point_system(
                         _ => {}
                     }
                 });
+
+                if buttons.just_released(MouseButton::Left) {
+                    event_writer.send(PointClickedEvent(node_id));
+                }
             }
         }
     }
 }
+
+#[derive(Debug, Clone)]
+pub struct PointClickedEvent(pub HighwayNodeIndex);

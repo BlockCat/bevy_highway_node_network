@@ -3,10 +3,7 @@
 #![feature(test)]
 extern crate test;
 
-use bevy::{
-    prelude::*,
-    DefaultPlugins,
-};
+use bevy::{prelude::*, DefaultPlugins};
 use bevy_dutch_road_highway_node_network::{
     camera::{CameraConfig, CameraPlugin},
     ui::HighwayUiPlugin,

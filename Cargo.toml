@@ -8,17 +8,15 @@ version = "0.1.0"
 [dependencies]
 bevy = {version = "0.9", features = ["dynamic"]}
 bevy_egui = {version = "0.18"}
-# bevy_prototype_lyon = "0.7"
+
 bevy_polyline = "0.4.0"
 bevy_shapefile = {path = "./bevy_shapefile"}
 highway = {path = "./highway"}
 
 bincode = "1.3.3"
 network = {path = "./network"}
-petgraph = {version = "0.6", features = ["serde-1"]}
-
+petgraph = {version = "0.6.2", features = ["serde-1"]}
 rusqlite = {version = "0.28.0", features = ["bundled"]}
-
 serde = {version = "1.0.136", features = ["derive"]}
 zstd = "0.12"
 
