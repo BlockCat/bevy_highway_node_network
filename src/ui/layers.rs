@@ -160,15 +160,12 @@ pub fn colouring_system(
         } else {
             query.par_iter_mut().for_each(|mut we| {
                 for (i, sel) in ui_state.layers_selected.iter().enumerate() {
-                    if *sel {
-                        if preprocess
+                    if *sel && preprocess
                             .road_data_level
                             .get(&we.id)
                             .map(|&x| x > i as u8)
-                            .unwrap_or_default()
-                        {
-                            we.selected = WorldEntitySelectionType::BaseSelected;
-                        }
+                            .unwrap_or_default() {
+                        we.selected = WorldEntitySelectionType::BaseSelected;
                     }
                 }
             });
@@ -189,7 +186,7 @@ impl PreProcess {
         layers: Vec<DirectedNetworkGraph<IntermediateData>>,
     ) -> Self {
         let mut road_data_level = (0..base.edges().len())
-            .map(|x| EdgeId::from(x))
+            .map(EdgeId::from)
             .flat_map(|id| Vec::from(base.data.edge_road_id(id)))
             .map(|x| (RoadId::from(x), 0))
             .collect::<HashMap<_, _>>();

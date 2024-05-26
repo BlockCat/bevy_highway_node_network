@@ -123,12 +123,12 @@ impl From<WGS84> for RijkDriehoekCoordinate {
 
         let calc_latt: f32 = x_transformations
             .into_iter()
-            .zip(x_values.into_iter())
+            .zip(x_values)
             .map(|(a, b)| a * b)
             .sum();
         let calc_long: f32 = y_transformations
             .into_iter()
-            .zip(y_values.into_iter())
+            .zip(y_values)
             .map(|(a, b)| a * b)
             .sum();
 

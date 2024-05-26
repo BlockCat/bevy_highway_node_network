@@ -15,7 +15,7 @@ fn main() {
     let mut layers = vec![calculate_layer(30, &network, 2.0)];
 
     if let Some(x) = layers.first() {
-        write_file(x, format!("data/0.graph")).expect("Could not write");
+        write_file(x, "data/0.graph").expect("Could not write");
     }
 
     for i in 1..7 {

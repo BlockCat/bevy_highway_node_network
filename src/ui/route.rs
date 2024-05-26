@@ -136,5 +136,5 @@ where
     }
     println!("Not found but Evaluated: {}", evaluated);
 
-    return Err(String::from("No path found"));
+    Err(String::from("No path found"))
 }

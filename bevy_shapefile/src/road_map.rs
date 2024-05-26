@@ -148,7 +148,7 @@ fn load_road_sections(
     let roads = roads
         .into_par_iter()
         .enumerate()
-        .map(|(id, (line, r))| {
+        .map(|(id, (line, _))| {
             assert!(line.parts().len() == 1);
 
             let points = line

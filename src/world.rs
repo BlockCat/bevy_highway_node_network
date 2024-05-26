@@ -160,7 +160,8 @@ fn init_road_map(config: Res<WorldConfig>, mut commands: Commands) {
 
 fn load_road_map(config: &Res<WorldConfig>) -> RoadMap {
     let road_map_path = Path::new(&config.road_map_path);
-    let road_map = if let Ok(road_map) = crate::read_file(road_map_path) {
+
+    if let Ok(road_map) = crate::read_file(road_map_path) {
         road_map
     } else {
         println!("File {:?} not found, creating...", road_map_path);
@@ -170,8 +171,7 @@ fn load_road_map(config: &Res<WorldConfig>) -> RoadMap {
         crate::write_file(&road_map, road_map_path).expect("Could not write road_map");
 
         road_map
-    };
-    road_map
+    }
 }
 
 fn load_graph(
@@ -179,15 +179,15 @@ fn load_graph(
     road_map: &RoadMap,
 ) -> DirectedNetworkGraph<nwb::NWBNetworkData> {
     let network_path = Path::new(&config.directed_graph_path);
-    let network = if let Ok(network) = crate::read_file(network_path) {
+
+    if let Ok(network) = crate::read_file(network_path) {
         network
     } else {
         println!("File {:?} not found, creating...", network_path);
         let network = nwb::preprocess_roadmap(road_map, &config.database_path);
         crate::write_file(&network, network_path).expect("Could not write network");
         network
-    };
-    network
+    }
 }
 
 fn mark_on_changed_preprocess(
@@ -196,10 +196,8 @@ fn mark_on_changed_preprocess(
     mut q_camera: Query<(&Camera, &GlobalTransform, &mut Transform), (With<MainCamera>,)>,
 ) {
     if let Some(preprocess) = preprocess {
-        if preprocess.is_added() {
-            if let Ok(_) = q_camera.get_single_mut() {
-                tracker.map.clear();
-            }
+        if preprocess.is_added() && q_camera.get_single_mut().is_ok() {
+            tracker.map.clear();
         }
     }
 }
@@ -300,7 +298,6 @@ fn spawn_figure(
                     .iter()
                     .map(|c| Vec3::new(c.x, c.y, 0.0))
                     .collect(),
-                ..Default::default()
             }),
             material: materials.normal_material.clone_weak(),
             ..Default::default()

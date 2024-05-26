@@ -96,8 +96,6 @@ fn mouse_point_system(
                         _ => {}
                     }
                 });
-
-                return;
             }
         }
     }
