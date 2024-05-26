@@ -1,6 +1,6 @@
 use crate::{
     spatial::{JunctionSpatialIndex, RoadSection, RoadSpatialIndex},
-    JunctionId, RoadId, ShapeError,
+    JunctionId, RoadId, ShapeError, SKIP_TYPES,
 };
 use bevy::{
     math::{Vec2, Vec3},
@@ -20,14 +20,26 @@ use std::{collections::HashMap, fs::File, path::Path};
 /// Load shapefile.
 /// This shapefile is used vor visualization of road data.
 /// It loads all the road sections, and puts it in spatial data structures.
-#[derive(Serialize, Deserialize, Debug, Resource)]
+#[derive(Serialize, Deserialize, Debug, Clone, Resource)]
 pub struct RoadMap {
     pub roads: HashMap<RoadId, RoadSection>,
     pub junction_spatial: rstar::RTree<JunctionSpatialIndex, Params>,
     pub road_spatial: rstar::RTree<RoadSpatialIndex, Params>,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+impl RoadMap {
+    pub fn road_length(&self, road_id: RoadId) -> f32 {
+        let section = &self.roads[&road_id];
+
+        section
+            .points
+            .windows(2)
+            .map(|points| points[0].distance(points[1]))
+            .sum()
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Params;
 
 impl RTreeParams for Params {
@@ -45,16 +57,14 @@ impl RoadMap {
 
     pub fn read<P: AsRef<Path>>(path: P) -> Self {
         let file = File::open(path).expect("Could not open file");
-        let value = bincode::deserialize_from(file).expect("Could not deserialize");
 
-        value
+        bincode::deserialize_from(file).expect("Could not deserialize")
     }
 
     /// Load data from a shapefile
     pub fn from_shapefile<P: AsRef<Path>>(path: P) -> Result<Self, ShapeError> {
         println!("Start read of road data");
-        let roads =
-            shapefile::read_as::<P, Polyline, Record>(path).map_err(|x| ShapeError::Shape(x))?;
+        let roads = shapefile::read_as::<P, Polyline, Record>(path).map_err(ShapeError::Shape)?;
 
         println!("Loading junction data");
         let junctions = load_junctions(&roads);
@@ -67,7 +77,7 @@ impl RoadMap {
         let spatial_indeces = roads
             .iter()
             .map(|(id, section)| RoadSpatialIndex {
-                id: RoadId::from(*id),
+                id: *id,
                 aabb: section.aabb.clone(),
             })
             .collect();
@@ -106,6 +116,15 @@ fn get_usize(record: &Record, name: &str) -> Option<usize> {
     unreachable!();
 }
 
+fn get_text(record: &Record, name: &str) -> Option<String> {
+    let value = record.get(name).unwrap();
+
+    if let FieldValue::Character(x) = value {
+        return x.clone();
+    }
+    unreachable!();
+}
+
 /// Load junction point data
 fn load_junctions(roads: &Vec<(GenericPolyline<Point>, Record)>) -> HashMap<JunctionId, Vec2> {
     roads
@@ -113,11 +132,18 @@ fn load_junctions(roads: &Vec<(GenericPolyline<Point>, Record)>) -> HashMap<Junc
         .flat_map_iter(|(line, record)| {
             let junction_start = get_usize(record, "JTE_ID_BEG").unwrap();
             let junction_end = get_usize(record, "JTE_ID_END").unwrap();
+            let weg_type = get_text(record, "BST_CODE")
+                .map(|wt| SKIP_TYPES.contains(&&wt.as_ref()))
+                .unwrap_or(false);
+
+            if weg_type {
+                return vec![];
+            }
 
             let start = line.part(0).and_then(|p| p.first()).unwrap();
             let end = line.part(0).and_then(|p| p.last()).unwrap();
 
-            [
+            vec![
                 (
                     JunctionId::from(junction_start),
                     Vec2::new(start.x as f32, start.y as f32),
@@ -135,10 +161,18 @@ fn load_junctions(roads: &Vec<(GenericPolyline<Point>, Record)>) -> HashMap<Junc
 fn load_road_sections(
     roads: Vec<(GenericPolyline<Point>, Record)>,
 ) -> HashMap<RoadId, RoadSection> {
-    let roads = roads
+    roads
         .into_par_iter()
         .enumerate()
-        .map(|(id, (line, _))| {
+        .filter_map(|(id, (line, record))| {
+            let weg_type = get_text(&record, "BST_CODE")
+                .map(|wt| SKIP_TYPES.contains(&&wt.as_ref()))
+                .unwrap_or(false);
+
+            if weg_type {
+                return None;
+            }
+
             assert!(line.parts().len() == 1);
 
             let points = line
@@ -153,10 +187,10 @@ fn load_road_sections(
                 Vec3::new(bbox.x_range()[0] as f32, bbox.y_range()[0] as f32, 0.0),
                 Vec3::new(bbox.x_range()[1] as f32, bbox.y_range()[1] as f32, 0.0),
             );
+
             let id = RoadId::from(id);
 
-            (id, RoadSection { id, points, aabb })
+            Some((id, RoadSection { id, points, aabb }))
         })
-        .collect::<HashMap<_, _>>();
-    roads
+        .collect::<HashMap<_, _>>()
 }

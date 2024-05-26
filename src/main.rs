@@ -3,11 +3,7 @@
 #![feature(test)]
 extern crate test;
 
-use bevy::{
-    diagnostic::{FrameTimeDiagnosticsPlugin, LogDiagnosticsPlugin},
-    prelude::*,
-    DefaultPlugins,
-};
+use bevy::{prelude::*, DefaultPlugins};
 use bevy_dutch_road_highway_node_network::{
     camera::{CameraConfig, CameraPlugin},
     ui::HighwayUiPlugin,
@@ -27,7 +23,7 @@ fn main() {
         .add_plugin(WorldPlugin {
             config: WorldConfig {
                 database_path: "data/database.db".into(),
-                shapefile_path: "data/01-03-2022/Wegvakken/Wegvakken.shp".into(),
+                shapefile_path: "data/01-12-2022/Wegvakken/Wegvakken.shp".into(),
                 road_map_path: "data/road_map.data".into(),
                 directed_graph_path: "data/directed_graph.graph".into(),
 

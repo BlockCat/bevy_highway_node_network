@@ -1,6 +1,6 @@
 use std::collections::BinaryHeap;
 
-use network::{builder::EdgeDirection, highway_network::HighwayNetwork, NodeId};
+use network::{builder::EdgeDirection, NodeId};
 
 pub fn shortest_path(source: NodeId, target: NodeId, network: &HighwayNetwork) {
     let mut forward = HighwayDijkstraIterator::default();
@@ -59,7 +59,7 @@ fn handle_dijkstra_iteration(
         };
 
         if gap.is_finite() && entry.level == max_level {
-            top_layer.push(entry.clone());
+            top_layer.push(entry);
         }
 
         todo!("Settled from both dirs?");

@@ -1,21 +1,61 @@
-use bevy_dutch_road_highway_node_network::{nwb::NWBNetworkData, read_file, write_file};
+use bevy_dutch_road_highway_node_network::{nwb::NwbGraph, read_file, write_file};
+use bevy_shapefile::{RoadId, RoadMap};
 use highway::generation::calculate_layer;
-use network::{DirectedNetworkGraph, NetworkData};
+use network::{iterators::Distanceable, HighwayGraph, IntermediateGraph};
+
+use petgraph::{
+    algo,
+    visit::{EdgeRef, IntoEdgesDirected, IntoNeighborsDirected, IntoNodeIdentifiers},
+    Graph,
+};
+use rayon::join;
+
+#[derive(Debug, Clone)]
+struct RoadWeight(RoadId, f32);
+
+impl Distanceable for RoadWeight {
+    fn distance(&self) -> f32 {
+        self.1
+    }
+}
 
 fn main() {
-    let network: DirectedNetworkGraph<NWBNetworkData> =
-        read_file("data/directed_graph.graph").unwrap();
+    let (network, road_map) = join(
+        || read_file::<NwbGraph, _>("data/directed_graph.graph").unwrap(),
+        || read_file::<RoadMap, _>("data/road_map.data").unwrap(),
+    );
 
     println!(
         "Layer: 0 - n: {}, e: {} ",
-        network.nodes().len(),
-        network.edges().len()
+        network.node_count(),
+        network.edge_count()
     );
 
-    let mut layers = vec![calculate_layer(30, &network, 2.0)];
+    let network = network.map(
+        |_, n| *n,
+        |_, e| {
+            let distance = road_map.road_length(*e);
+            RoadWeight(*e, distance)
+        },
+    );
+
+    let network = HighwayGraph::from(network);
+
+    println!("Translated network");
+
+    for ni in network.node_identifiers() {
+        assert!(network
+            .edges_directed(ni, petgraph::Direction::Outgoing)
+            .all(|s| s.source() == ni));
+        assert!(network
+            .edges_directed(ni, petgraph::Direction::Incoming)
+            .all(|s| s.target() == ni));
+    }
+
+    let mut layers = vec![calculate_layer(30, network.clone(), 2.0)];
 
     if let Some(x) = layers.first() {
-        write_file(x, format!("data/0.graph")).expect("Could not write");
+        write_file(x, "data/0.graph").expect("Could not write");
     }
 
     for i in 1..7 {
@@ -23,16 +63,16 @@ fn main() {
         println!(
             "Layer: {} - n: {}, e: {} ",
             i,
-            prev_layer.nodes().len(),
-            prev_layer.edges().len()
+            prev_layer.node_count(),
+            prev_layer.edge_count()
         );
-        let next = calculate_layer(30, prev_layer, 3.0);
+        let next = calculate_layer(30, prev_layer.clone(), 2.0);
 
-        write_file(&next, format!("data/{}.graph", i)).expect("Could not write");
+        write_file(&next, format!("data/{i}.graph")).expect("Could not write");
         layers.push(next);
     }
 
-    data(0, 1, &network, &layers[0]);
+    print_data(0, 1, &network, &layers[0]);
 
     let mut counter = 0;
 
@@ -41,19 +81,19 @@ fn main() {
         let l1 = &layer[0];
         let l2 = &layer[1];
 
-        data(counter, counter + 1, l1, l2);
+        print_data(counter, counter + 1, l1, l2);
     }
 }
 
-fn data<A: NetworkData, B: NetworkData>(
+fn print_data<A, B, C, D>(
     level_a: usize,
     level_b: usize,
-    a: &DirectedNetworkGraph<A>,
-    b: &DirectedNetworkGraph<B>,
+    a: &HighwayGraph<A, B>,
+    b: &HighwayGraph<C, D>,
 ) {
-    println!("From: {} to {}", level_a, level_b);
-    let nodes_a = a.nodes().len();
-    let nodes_b = b.nodes().len();
+    println!("From: {level_a} to {level_b}");
+    let nodes_a = a.node_count();
+    let nodes_b = b.node_count();
     let percentage = nodes_b as f32 / nodes_a as f32 - 1.0;
     println!(
         "Nodes: {} -> {} {:02}%",
