@@ -24,9 +24,9 @@ pub struct CameraConfig {
 impl Plugin for CameraPlugin {
     fn build(&self, app: &mut bevy::prelude::App) {
         app.insert_resource(self.config.clone())
-            .add_startup_system(load_camera)
-            .add_system(camera_system_zoom)
-            .add_system(camera_system_move);
+            .add_systems(Startup, load_camera)
+            .add_systems(Update, camera_system_zoom)
+            .add_systems(Update, camera_system_move);
     }
 }
 
@@ -54,7 +54,7 @@ fn load_camera(mut commands: Commands) {
 
 fn camera_system_zoom(
     config: Res<CameraConfig>,
-    keys: Res<Input<KeyCode>>,
+    keys: Res<ButtonInput<KeyCode>>,
     mut q_camera: Query<&mut Projection, With<MainCamera>>,
 ) {
     let mut zoomed = false;
@@ -83,7 +83,7 @@ fn camera_system_zoom(
 
 fn camera_system_move(
     config: Res<CameraConfig>,
-    keys: Res<Input<KeyCode>>,
+    keys: Res<ButtonInput<KeyCode>>,
     mut q_camera: Query<(&Projection, &mut Transform), With<MainCamera>>,
 ) {
     let mut translation = Vec3::new(0.0, 0.0, 0.0);

@@ -3,11 +3,7 @@
 #![feature(test)]
 extern crate test;
 
-use bevy::{
-    diagnostic::{FrameTimeDiagnosticsPlugin, LogDiagnosticsPlugin},
-    prelude::*,
-    DefaultPlugins,
-};
+use bevy::{prelude::*, DefaultPlugins};
 use bevy_dutch_road_highway_node_network::{
     camera::{CameraConfig, CameraPlugin},
     ui::HighwayUiPlugin,
@@ -18,16 +14,16 @@ use bevy_polyline::PolylinePlugin;
 fn main() {
     App::new()
         .insert_resource(ClearColor(Color::rgb(0.0, 0.0, 0.2)))
-        .insert_resource(Msaa { samples: 4 })
+        .insert_resource(Msaa::Sample4)
         .add_plugins(DefaultPlugins)
-        .add_plugin(HighwayUiPlugin)
-        .add_plugin(PolylinePlugin)
-        // .add_plugin(LogDiagnosticsPlugin::default())
-        // .add_plugin(FrameTimeDiagnosticsPlugin::default())
-        .add_plugin(WorldPlugin {
+        .add_plugins(HighwayUiPlugin)
+        .add_plugins(PolylinePlugin)
+        // .add_plugins(LogDiagnosticsPlugin::default())
+        // .add_plugins(FrameTimeDiagnosticsPlugin::default())
+        .add_plugins(WorldPlugin {
             config: WorldConfig {
                 database_path: "data/database.db".into(),
-                shapefile_path: "data/01-03-2022/Wegvakken/Wegvakken.shp".into(),
+                shapefile_path: "data/01-05-2024/Wegvakken/Wegvakken.shp".into(),
                 road_map_path: "data/road_map.data".into(),
                 directed_graph_path: "data/directed_graph.graph".into(),
 
@@ -35,16 +31,16 @@ fn main() {
                 normal_colour: Color::WHITE,
             },
         })
-        .add_plugin(CameraPlugin {
+        .add_plugins(CameraPlugin {
             config: CameraConfig {
-                zoom_in: KeyCode::Q,
-                zoom_out: KeyCode::E,
+                zoom_in: KeyCode::KeyQ,
+                zoom_out: KeyCode::KeyE,
                 zoom_factor: 0.99,
                 speed: 10.0,
-                left: KeyCode::A,
-                right: KeyCode::D,
-                up: KeyCode::W,
-                down: KeyCode::S,
+                left: KeyCode::KeyA,
+                right: KeyCode::KeyD,
+                up: KeyCode::KeyW,
+                down: KeyCode::KeyS,
             },
         })
         .run();

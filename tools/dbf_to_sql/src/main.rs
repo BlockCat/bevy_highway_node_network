@@ -1,13 +1,13 @@
 use std::path::Path;
 
-use rusqlite::{params, Connection, Transaction};
+use rusqlite::{named_params, params, Connection, Transaction};
 use shapefile::dbase::{FieldValue, Record};
 
 const CREATE_TABLE_SQL: &'static str = include_str!("create_table.sql");
 const INSERT_SQL: &'static str = include_str!("insert.sql");
 
 fn main() {
-    let mut connection = Connection::open("database.db").expect("Could not create database");
+    let mut connection = Connection::open("data/database.db").expect("Could not create database");
 
     connection
         .execute("DROP TABLE IF EXISTS wegvakken", [])
@@ -21,7 +21,7 @@ fn main() {
         .transaction()
         .expect("Could not start transaction");
 
-    execute_transaction("data/01-03-2022/Wegvakken/Wegvakken.shp", &transaction);
+    execute_transaction("data/01-05-2024/Wegvakken/Wegvakken.shp", &transaction);
 
     println!("Start committing");
 
@@ -41,27 +41,26 @@ fn execute_transaction<P: AsRef<Path>>(path: P, tx: &Transaction) {
         .into_iter()
         .enumerate()
         .for_each(|(id, (_, record))| {
-            stmt.execute(params![
-                id,
-                get_usize(&record, "WVK_ID"),
-                get_usize(&record, "JTE_ID_BEG"),
-                get_usize(&record, "JTE_ID_END"),
-                get_text(&record, "RIJRICHTNG"),
-                get_text(&record, "STT_NAAM"),
-                get_text(&record, "WEGBEHNAAM"),
-                get_text(&record, "WEGTYPE"),
-                get_text(&record, "WGTYPE_OMS"),
-                get_text(&record, "HNRSTRLNKS"),
-                get_text(&record, "HNRSTRRHTS"),
-                get_usize(&record, "E_HNR_LNKS"),
-                get_usize(&record, "E_HNR_RHTS"),
-                get_usize(&record, "L_HNR_LNKS"),
-                get_usize(&record, "L_HNR_RHTS"),
-                get_float(&record, "BEGAFSTAND"),
-                get_float(&record, "ENDAFSTAND"),
-                get_float(&record, "BEGINKM"),
-                get_float(&record, "EINDKM")
-            ])
+            stmt.execute(named_params! {
+                         ":id": id,
+            ":wegvak_id": get_usize(&record, "WVK_ID"),
+            ":junction_id_begin": get_usize(&record, "JTE_ID_BEG"),
+            ":junction_id_end": get_usize(&record, "JTE_ID_END"),
+            ":rij_richting": get_text(&record, "RIJRICHTNG"),
+            ":straat_naam": get_text(&record, "STT_NAAM"),
+            ":beheerder": get_text(&record, "WEGBEHNAAM"),
+            ":weg_type": get_text(&record, "BST_CODE"),
+            ":huisnummer_structuur_links": get_text(&record, "HNRSTRLNKS"),
+            ":huisnummer_structuur_rechts": get_text(&record, "HNRSTRRHTS"),
+            ":eerste_huisnummer_links": get_usize(&record, "E_HNR_LNKS"),
+            ":eerste_huisnummer_rechts": get_usize(&record, "E_HNR_RHTS"),
+            ":laatste_huisnummer_links": get_usize(&record, "L_HNR_LNKS"),
+            ":laatste_huisnummer_rechts": get_usize(&record, "L_HNR_RHTS"),
+            ":begin_afstand": get_float(&record, "BEGAFSTAND"),
+            ":eind_afstand": get_float(&record, "ENDAFSTAND"),
+            ":begin_km": get_float(&record, "BEGINKM"),
+            ":eind_km": get_float(&record, "EINDKM"),
+                    })
             .expect("Could not insert");
         });
 }
@@ -88,7 +87,7 @@ fn get_float(record: &Record, name: &str) -> Option<f64> {
     let value = record.get(name).unwrap();
 
     if let FieldValue::Numeric(x) = value {
-        return x.clone();
+        return *x;
     }
     unreachable!();
 }

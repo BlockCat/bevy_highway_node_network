@@ -3,16 +3,12 @@ use crate::{
     nwb::{self},
     ui::{DirectedNetworkGraphContainer, PreProcess},
 };
-use bevy::{prelude::*, tasks::AsyncComputeTaskPool};
-use bevy_polyline::{
-    prelude::{Polyline, PolylineBundle, PolylineMaterial},
-    PolylinePlugin,
-};
+use bevy::prelude::*;
+use bevy_polyline::prelude::{Polyline, PolylineBundle, PolylineMaterial};
 use bevy_shapefile::{RoadId, RoadMap, RoadSection, AABB};
 use network::DirectedNetworkGraph;
 use std::{
     collections::{HashMap, HashSet},
-    ops::Sub,
     path::Path,
 };
 
@@ -75,13 +71,13 @@ impl Plugin for WorldPlugin {
     fn build(&self, app: &mut bevy::prelude::App) {
         app.insert_resource(WorldTracker::default())
             .insert_resource(self.config.clone())
-            .add_startup_system(init_materials)
-            .add_startup_system(init_road_map)
-            .add_system(mark_on_changed_preprocess)
-            .add_system(colour_system) // Used for drawing the layers
-            // .add_system(test_algorithm)
-            // .add_system(help)
-            .add_system(visible_entities);
+            .add_systems(Startup, init_materials)
+            .add_systems(Startup, init_road_map)
+            .add_systems(Update, mark_on_changed_preprocess)
+            .add_systems(Update, colour_system) // Used for drawing the layers
+            // .add_systems(Update, test_algorithm)
+            // .add_systems(Update, help)
+            .add_systems(Update, visible_entities);
     }
 }
 
@@ -264,7 +260,7 @@ fn colour_system(
     loaded_materials: Res<LoadedMaterials>,
     mut query: Query<(&mut WorldEntity, &mut Handle<PolylineMaterial>)>,
 ) {
-    query.par_for_each_mut(32, |(mut we, mut mode)| {
+    query.par_iter_mut().for_each(|(mut we, mut mode)| {
         let material = match we.selected {
             WorldEntitySelectionType::NotSelected => loaded_materials.normal_material.clone_weak(),
             WorldEntitySelectionType::BaseSelected => {

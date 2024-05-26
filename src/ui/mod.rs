@@ -2,7 +2,7 @@ use crate::{
     nwb::NWBNetworkData,
     world::{WorldEntity, WorldEntitySelectionType},
 };
-use bevy::prelude::*;
+use bevy::{prelude::*, window::PrimaryWindow};
 use bevy_egui::EguiPlugin;
 use bevy_shapefile::RoadMap;
 pub use layers::PreProcess;
@@ -37,7 +37,7 @@ impl DerefMut for DirectedNetworkGraphContainer {
 
 impl Plugin for HighwayUiPlugin {
     fn build(&self, app: &mut bevy::prelude::App) {
-        app.add_plugin(EguiPlugin)
+        app.add_plugins(EguiPlugin)
             .insert_resource(LayerState {
                 preprocess_layers: 6,
                 neighbourhood_size: 30,
@@ -46,26 +46,26 @@ impl Plugin for HighwayUiPlugin {
                 layers_selected: vec![],
                 processing: false,
             })
-            .add_system(layers::colouring_system)
-            .add_system(layers::handle_preprocess_task)
-            .add_system(layers::gui_system)
-            .add_system(point_system);
+            .add_systems(Update, layers::colouring_system)
+            .add_systems(Update, layers::handle_preprocess_task)
+            .add_systems(Update, layers::gui_system)
+            .add_systems(Update, mouse_point_system);
     }
 }
 
-fn point_system(
-    windows: Res<Windows>,
+fn mouse_point_system(
+    windows: Query<&Window, With<PrimaryWindow>>,
     network: Res<DirectedNetworkGraphContainer>,
     road_map: Res<RoadMap>,
     camera_q: Query<(&GlobalTransform, &Camera)>,
     mut query: Query<&mut WorldEntity>,
 ) {
-    if let Some(window) = windows.get_primary() {
+    if let Ok(window) = windows.get_single() {
         if let Ok((transform, camera)) = camera_q.get_single() {
             if let Some(position) = window.cursor_position() {
                 let position = Vec2::new(
                     2.0 * position.x / window.width() - 1.0,
-                    2.0 * position.y / window.height() - 1.0,
+                    -(2.0 * position.y / window.height() - 1.0),
                 );
                 let world = crate::world::convert(position, transform, camera);
                 let node = road_map
@@ -88,7 +88,7 @@ fn point_system(
                     .map(|(id, _)| *network.edge_data(id))
                     .collect::<HashSet<_>>();
 
-                query.for_each_mut(|mut we| {
+                query.iter_mut().for_each(|mut we| {
                     match (out_edges.contains(&we.id), in_edges.contains(&we.id)) {
                         (true, true) => we.selected = WorldEntitySelectionType::BiDirection,
                         (true, false) => we.selected = WorldEntitySelectionType::Incoming,

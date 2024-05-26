@@ -27,6 +27,18 @@ pub struct RoadMap {
     pub road_spatial: rstar::RTree<RoadSpatialIndex, Params>,
 }
 
+impl RoadMap {
+    pub fn road_length(&self, road_id: RoadId) -> f32 {
+        let section = &self.roads[&road_id];
+
+        section
+            .points
+            .windows(2)
+            .map(|points| points[0].distance(points[1]))
+            .sum()
+    }
+}
+
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Params;
 
@@ -45,9 +57,7 @@ impl RoadMap {
 
     pub fn read<P: AsRef<Path>>(path: P) -> Self {
         let file = File::open(path).expect("Could not open file");
-        let value = bincode::deserialize_from(file).expect("Could not deserialize");
-
-        value
+        bincode::deserialize_from(file).expect("Could not deserialize")
     }
 
     /// Load data from a shapefile
@@ -67,7 +77,7 @@ impl RoadMap {
         let spatial_indeces = roads
             .iter()
             .map(|(id, section)| RoadSpatialIndex {
-                id: RoadId::from(*id),
+                id: *id,
                 aabb: section.aabb.clone(),
             })
             .collect();
@@ -138,7 +148,7 @@ fn load_road_sections(
     let roads = roads
         .into_par_iter()
         .enumerate()
-        .map(|(id, (line, _))| {
+        .map(|(id, (line, r))| {
             assert!(line.parts().len() == 1);
 
             let points = line

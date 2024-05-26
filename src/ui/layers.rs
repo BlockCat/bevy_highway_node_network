@@ -8,7 +8,7 @@ use bevy::{
     prelude::*,
     tasks::{AsyncComputeTaskPool, Task},
 };
-use bevy_egui::{egui, EguiContext};
+use bevy_egui::{egui, EguiContexts};
 use bevy_shapefile::RoadId;
 use futures_lite::future;
 use highway::generation::intermediate_network::IntermediateData;
@@ -31,7 +31,7 @@ pub struct ComputeTask<T>(Task<T>);
 
 pub fn gui_system(
     mut commands: Commands,
-    mut egui_context: ResMut<EguiContext>,
+    mut egui_context: EguiContexts,
     mut state: ResMut<LayerState>,
     preprocess: Option<Res<PreProcess>>,
     base_network: Res<DirectedNetworkGraphContainer>,
@@ -154,11 +154,11 @@ pub fn colouring_system(
 ) {
     if let Some(preprocess) = preprocess {
         if ui_state.base_selected {
-            query.par_for_each_mut(32, |mut we| {
+            query.par_iter_mut().for_each(|mut we| {
                 we.selected = WorldEntitySelectionType::BaseSelected;
             });
         } else {
-            query.par_for_each_mut(32, |mut we| {
+            query.par_iter_mut().for_each(|mut we| {
                 for (i, sel) in ui_state.layers_selected.iter().enumerate() {
                     if *sel {
                         if preprocess

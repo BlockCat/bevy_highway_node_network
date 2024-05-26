@@ -1,23 +1,21 @@
+use super::DirectedNetworkGraphContainer;
+use crate::world::WorldEntity;
 use crate::world::WorldEntitySelectionType;
-use crate::{nwb::NWBNetworkData, world::WorldEntity};
 use bevy::prelude::*;
-use bevy_egui::egui;
-use bevy_egui::EguiContext;
+use bevy_egui::{egui, EguiContexts};
 use network::{iterators::F32, DirectedNetworkGraph, EdgeId, NetworkData, NodeId};
 use std::{
     cmp::Reverse,
     collections::{BinaryHeap, HashMap, HashSet},
 };
 
-use super::DirectedNetworkGraphContainer;
-
 pub struct RouteUIPlugin;
 
 impl Plugin for RouteUIPlugin {
     fn build(&self, app: &mut App) {
         app.insert_resource(RouteState::default())
-            .add_system(gui_system)
-            .add_system(route_draw);
+            .add_systems(Update, gui_system)
+            .add_systems(Update, route_draw);
     }
 }
 
@@ -29,7 +27,7 @@ pub struct RouteState {
     edges: Option<Vec<(NodeId, EdgeId)>>,
 }
 
-pub fn gui_system(mut egui_context: ResMut<EguiContext>, mut state: ResMut<RouteState>) {
+pub fn gui_system(mut egui_context: EguiContexts, mut state: ResMut<RouteState>) {
     egui::Window::new("Preprocessing").show(egui_context.ctx_mut(), |ui| {
         ui.label("Routing");
 
@@ -64,9 +62,9 @@ fn route_draw(
             .map(|(_, e)| *network.edge_data(*e))
             .collect::<HashSet<_>>();
 
-        query.for_each_mut(|mut a| {
+        query.iter_mut().for_each(|mut a| {
             if l.contains(&a.id) {
-                a.selected = WorldEntitySelectionType::Route;// Some(Color::ALICE_BLUE);
+                a.selected = WorldEntitySelectionType::Route; // Some(Color::ALICE_BLUE);
             }
         });
     }
