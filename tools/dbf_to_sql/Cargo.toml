@@ -9,3 +9,4 @@ version = "0.1.0"
 
 rusqlite = {version = "0.31.0", features = ["bundled"]}
 shapefile = {version = "0.6.0"}
+rayon = "*"

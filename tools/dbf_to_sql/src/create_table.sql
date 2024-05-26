@@ -11,7 +11,8 @@ CREATE TABLE IF NOT EXISTS wegvakken
     straat_naam TEXT, --STT_NAAM
     beheerder TEXT, --WEGBEHNAAM
 
-    weg_type TEXT, -- WEGTYPE
+    -- weg_type_category TEXT, -- WEGTYPE
+    weg_type_subcategory TEXT, -- WEGTYPE
 
     huisnummer_structuur_links CHARACTER(1), --HNRSTRLNKS
     huisnummer_structuur_rechts CHARACTER(1), --HNRSTRRHTS
@@ -26,6 +27,7 @@ CREATE TABLE IF NOT EXISTS wegvakken
     eind_afstand REAL, --ENDAFSTAND
 
     begin_km REAL, --BEGINKM
-    eind_km REAL --EINDKM
+    eind_km REAL, --EINDKM
 
+    snelheidslimiet REAL --MAXSHD
 );

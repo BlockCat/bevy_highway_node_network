@@ -85,17 +85,7 @@ where
     // let mut test = Vec::new();
 
     let mut heap = BinaryHeap::new();
-    for (id, initial_descendant) in network.out_edges(source) {
-        let target = initial_descendant.target();
-        let distance = initial_descendant.distance();
-
-        heap.push((
-            Reverse(F32(distance + spare(source, target))),
-            F32(distance),
-            target,
-            (source, id),
-        ));
-    }
+    explore_node(network, source, &mut heap, 0f32, spare(source, target));
 
     while let Some((_, F32(old_distance), current, parent)) = heap.pop() {
         let spare_distance = spare(current, target);
@@ -122,19 +112,29 @@ where
             return Ok(path);
         }
 
-        for (id, edge) in network.out_edges(current) {
-            let target = edge.target();
-            let distance = edge.distance() + old_distance;
-
-            heap.push((
-                Reverse(F32(distance + spare_distance)),
-                F32(distance),
-                target,
-                (current, id),
-            ));
-        }
+        explore_node(network, current, &mut heap, old_distance, spare_distance);
     }
     println!("Not found but Evaluated: {}", evaluated);
 
     Err(String::from("No path found"))
+}
+
+fn explore_node<D: NetworkData>(
+    network: &DirectedNetworkGraph<D>,
+    source: NodeId,
+    heap: &mut BinaryHeap<(Reverse<F32>, F32, NodeId, (NodeId, EdgeId))>,
+    old_distance: f32,
+    spare_distance: f32,
+) {
+    for (id, edge) in network.out_edges(source) {
+        let target = edge.target();
+        let distance = old_distance + edge.distance();
+
+        heap.push((
+            Reverse(F32(distance + spare_distance)),
+            F32(distance),
+            target,
+            (source, id),
+        ));
+    }
 }

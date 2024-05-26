@@ -1774,6 +1774,7 @@ dependencies = [
 name = "dbf_to_sql"
 version = "0.1.0"
 dependencies = [
+ "rayon",
  "rusqlite",
  "shapefile",
 ]

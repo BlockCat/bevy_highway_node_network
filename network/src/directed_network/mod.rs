@@ -14,6 +14,7 @@ pub mod builder;
 pub mod iterators;
 pub mod node_data;
 
+
 #[derive(Debug, PartialEq, Eq, Clone, Serialize, Deserialize)]
 pub struct NetworkNode {
     pub id: u32,

@@ -11,7 +11,8 @@ INSERT INTO wegvakken
     straat_naam,
     beheerder,
 
-    weg_type,
+    -- weg_type_category,
+    weg_type_subcategory,
     
     huisnummer_structuur_links,
     huisnummer_structuur_rechts,
@@ -26,7 +27,8 @@ INSERT INTO wegvakken
     eind_afstand,
 
     begin_km,
-    eind_km
+    eind_km,
+    snelheidslimiet
 ) VALUES (
     :id,
     :wegvak_id,
@@ -39,8 +41,9 @@ INSERT INTO wegvakken
     :straat_naam,
     :beheerder,
 
-    :weg_type,
-    
+    -- :weg_type_category,
+    :weg_type_subcategory,
+
     :huisnummer_structuur_links,
     :huisnummer_structuur_rechts,
 
@@ -54,5 +57,6 @@ INSERT INTO wegvakken
     :eind_afstand,
 
     :begin_km,
-    :eind_km
+    :eind_km,
+    :snelheidslimiet
 );
