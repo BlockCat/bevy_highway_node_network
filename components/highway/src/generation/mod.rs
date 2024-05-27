@@ -71,7 +71,8 @@ pub(crate) fn phase_1<D: NetworkData>(
         duration.as_millis()
     );
     println!(
-        "Start computing (edges collections: {})",
+        "Start computing (nodes: {}, edges collections: {})",
+        network.nodes().len(),
         network.edges().len()
     );
 
