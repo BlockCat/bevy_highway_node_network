@@ -1,3 +1,6 @@
+//! A library for working with networks.
+//! This lib provides a way to create and manipulate networks.
+//!
 #![feature(map_try_insert)]
 #![feature(is_sorted)]
 

@@ -30,6 +30,17 @@ Phase 1 generation:
 time:   [20.726 s 22.190 s 23.603 s]
 ```
 
+Own graph, generation layer 1 with neighbourhoodsize: 30.
+
+|                    | old      | new      |
+| ------------------ | -------- | -------- |
+| nodes collections? | 1076637  | 1076637  |
+| edges collections? | 3076728  | 2865414? |
+| p1                 | 164144ms | 105028ms |
+| p1-fw-n            | 2122ms   | 1510ms   |
+| p1-dijkstra        | 159862ms |          |
+| p2                 | 6723ms   | 3200ms   |
+
 ## Types
 
 https://docs.ndw.nu/handleidingen/nwb/nwb-basisstructuur/overige-attributen/
@@ -67,3 +78,4 @@ https://docs.ndw.nu/handleidingen/nwb/nwb-basisstructuur/overige-attributen/
 - PR(Parkeerplaats P+R)
 - VD (Veerdienst)
 - (Geen)
+```

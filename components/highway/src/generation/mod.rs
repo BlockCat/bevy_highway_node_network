@@ -55,10 +55,12 @@ where
     N: Send + Sync + Clone,
     E: Send + Sync + Distanceable + Clone,
 {
-    let phase_1_graph = phase_1(size, network);
+    let (duration, intermediate) = stopwatch!(phase_1(size, network));
 
-    let phase_2_graph = phase_2(phase_1_graph, contraction_factor);
+    println!("Finished phase 1 {}ms", duration.as_millis());
 
+    let (duration, phase_2_graph) = stopwatch!(phase_2(intermediate, contraction_factor));
+    println!("Finished phase 2 {}ms", duration.as_millis());
     HighwayGraph::from(phase_2_graph)
 }
 
@@ -80,16 +82,19 @@ pub(crate) fn phase_1<N: Send + Sync + Clone, E: Send + Sync + Clone + Distancea
         duration.as_millis()
     );
     println!(
-        "Start computing (edges collections: {})",
+        "Start computing (nodes: {}, edges collections: {})",
+        network.node_count(),
         network.edge_count()
     );
-
     let edges = network
         .node_identifiers()
         .par_bridge()
         .flat_map_iter(|id| dijkstra::calculate_edges(id, &computed, &network))
         .collect::<HashSet<_>>();
-
+    println!(
+        "Finished computing (edges collections) {}ms",
+        duration.as_millis()
+    );
     println!("Got retained edges");
 
     let mut new_network = IntermediateGraph::from(network);
