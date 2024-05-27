@@ -1,3 +1,6 @@
+//! A library for working with networks.
+//! This lib provides a way to create and manipulate networks.
+//!
 #![feature(map_try_insert)]
 #![feature(is_sorted)]
 
@@ -6,14 +9,12 @@ use std::ops::Deref;
 pub use directed_network::*;
 pub use neighbourhood::*;
 
+/// Tja
 pub mod directed_network;
-// pub mod highway;
+
 pub mod highway_network;
 pub mod neighbourhood;
 
-// pub use highway::intermediate_network;
-
-// pub use highway::calculate_layer;
 use serde::Deserialize;
 use serde::Serialize;
 

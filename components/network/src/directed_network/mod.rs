@@ -14,16 +14,19 @@ pub mod builder;
 pub mod iterators;
 pub mod node_data;
 
-
+/// A node in the graph.
 #[derive(Debug, PartialEq, Eq, Clone, Serialize, Deserialize)]
 pub struct NetworkNode {
+    /// A unique identifier for the node. It is (unfortunately) not the junction Id.
     pub id: u32,
+    /// The index of the first edge in the list of edges that are connected to this node.
     pub start_edge_index: u32,
+    /// The index of the last edge in the list of edges that are connected to this node.
     pub last_edge_index: u32,
 }
 
 impl NetworkNode {
-    pub fn new(id: u32, start_edge_index: u32, last_edge_index: u32) -> Self {
+    pub(crate) fn new(id: u32, start_edge_index: u32, last_edge_index: u32) -> Self {
         Self {
             id,
             start_edge_index,
@@ -43,7 +46,7 @@ pub struct NetworkEdge {
 impl Eq for NetworkEdge {}
 
 impl NetworkEdge {
-    pub fn new(
+    pub(crate) fn new(
         data_id: u32,
         target_node: NodeId,
         edge_weight: f32,
@@ -68,6 +71,9 @@ impl NetworkEdge {
     }
 }
 
+/// A Directed network graph, the graph is represented by a list of nodes and a list of edges.
+/// It's an adjacency list representation of a graph.
+/// The graph is immutable.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct DirectedNetworkGraph<D: NetworkData = ()> {
     pub data: D,
@@ -76,7 +82,7 @@ pub struct DirectedNetworkGraph<D: NetworkData = ()> {
 }
 
 impl<D: NetworkData> DirectedNetworkGraph<D> {
-    pub fn new(nodes: Vec<NetworkNode>, edges: Vec<NetworkEdge>, data: D) -> Self {
+    pub(crate) fn new(nodes: Vec<NetworkNode>, edges: Vec<NetworkEdge>, data: D) -> Self {
         Self { data, nodes, edges }
     }
 
@@ -134,7 +140,6 @@ impl<D: NetworkData> DirectedNetworkGraph<D> {
     pub fn in_edges_raw(&self, node: &NetworkNode) -> EdgeIterator {
         self.create_iterator_raw(node, EdgeDirection::Backward)
     }
-
 
     pub fn forward_iterator(&self, node: NodeId) -> ForwardDijkstraIterator<'_, D> {
         let mut heap = BinaryHeap::new();
