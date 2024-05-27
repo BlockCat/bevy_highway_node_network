@@ -2,4 +2,4 @@
 #![feature(is_sorted)]
 
 pub mod generation;
-pub mod query;
+// pub mod query;

@@ -1,12 +1,13 @@
 use crate::{
-    nwb::NWBNetworkData,
+    nwb::NwbGraph,
     world::{WorldEntity, WorldEntitySelectionType},
 };
 use bevy::{prelude::*, window::PrimaryWindow};
 use bevy_egui::EguiPlugin;
 use bevy_shapefile::RoadMap;
 pub use layers::PreProcess;
-use network::{DirectedNetworkGraph, NodeId};
+use network::HighwayNodeIndex;
+use petgraph::visit::IntoNodeReferences;
 use std::{
     collections::HashSet,
     ops::{Deref, DerefMut},
@@ -20,10 +21,11 @@ mod route;
 pub struct HighwayUiPlugin;
 
 #[derive(Resource, Debug)]
-pub struct DirectedNetworkGraphContainer(pub DirectedNetworkGraph<NWBNetworkData>);
+// pub struct DirectedNetworkGraphContainer(pub DirectedNetworkGraph<NWBNetworkData>);
+pub struct DirectedNetworkGraphContainer(pub NwbGraph);
 
 impl Deref for DirectedNetworkGraphContainer {
-    type Target = DirectedNetworkGraph<NWBNetworkData>;
+    type Target = NwbGraph;
 
     fn deref(&self) -> &Self::Target {
         &self.0
@@ -38,6 +40,8 @@ impl DerefMut for DirectedNetworkGraphContainer {
 impl Plugin for HighwayUiPlugin {
     fn build(&self, app: &mut bevy::prelude::App) {
         app.add_plugins(EguiPlugin)
+            .add_plugins(route::RouteUIPlugin)
+            .add_event::<PointClickedEvent>()
             .insert_resource(LayerState {
                 preprocess_layers: 6,
                 neighbourhood_size: 30,
@@ -49,15 +53,17 @@ impl Plugin for HighwayUiPlugin {
             .add_systems(Update, layers::colouring_system)
             .add_systems(Update, layers::handle_preprocess_task)
             .add_systems(Update, layers::gui_system)
-            .add_systems(Update, mouse_point_system);
+            .add_systems(Update, point_system);
     }
 }
 
-fn mouse_point_system(
+fn point_system(
     windows: Query<&Window, With<PrimaryWindow>>,
     network: Res<DirectedNetworkGraphContainer>,
     road_map: Res<RoadMap>,
     camera_q: Query<(&GlobalTransform, &Camera)>,
+    mut event_writer: EventWriter<PointClickedEvent>,
+    buttons: Res<ButtonInput<MouseButton>>,
     mut query: Query<&mut WorldEntity>,
 ) {
     if let Ok(window) = windows.get_single() {
@@ -73,19 +79,19 @@ fn mouse_point_system(
                     .nearest_neighbor(&[world.x, world.y])
                     .unwrap();
 
-                let node_id = (0..network.nodes().len())
-                    .map(NodeId::from)
-                    .find(|x| network.node_data(*x).0 == node.junction_id)
+                let node_id = network
+                    .node_references()
+                    .find(|n| n.1 .0 == node.junction_id)
+                    .map(|n| n.0)
                     .unwrap();
 
                 let out_edges = network
-                    .out_edges(node_id)
-                    .map(|(id, _)| *network.edge_data(id))
+                    .edges_directed(node_id, petgraph::Direction::Outgoing)
+                    .map(|x| *x.weight())
                     .collect::<HashSet<_>>();
-
                 let in_edges = network
-                    .in_edges(node_id)
-                    .map(|(id, _)| *network.edge_data(id))
+                    .edges_directed(node_id, petgraph::Direction::Incoming)
+                    .map(|x| *x.weight())
                     .collect::<HashSet<_>>();
 
                 query.iter_mut().for_each(|mut we| {
@@ -96,7 +102,14 @@ fn mouse_point_system(
                         _ => {}
                     }
                 });
+
+                if buttons.just_released(MouseButton::Left) {
+                    event_writer.send(PointClickedEvent(node_id));
+                }
             }
         }
     }
 }
+
+#[derive(Debug, Clone, Event)]
+pub struct PointClickedEvent(pub HighwayNodeIndex);

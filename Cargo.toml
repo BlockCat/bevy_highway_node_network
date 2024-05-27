@@ -23,6 +23,8 @@ zstd = "0.13"
 futures-lite = "2.3"
 rayon = "1.5.1"
 
+petgraph = {version = "0.6", features = ["rayon"]}
+
 [dev-dependencies]
 criterion = "0.5"
 

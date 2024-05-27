@@ -511,6 +511,7 @@ dependencies = [
  "futures-lite",
  "highway",
  "network",
+ "petgraph",
  "rayon",
  "rusqlite",
  "serde",
@@ -2413,6 +2414,7 @@ version = "0.1.0"
 dependencies = [
  "itertools 0.13.0",
  "network",
+ "petgraph",
  "rayon",
  "serde",
 ]
@@ -2481,6 +2483,7 @@ checksum = "168fb715dda47215e360912c096649d23d58bf392ac62f73919e831745e40f26"
 dependencies = [
  "equivalent",
  "hashbrown",
+ "rayon",
 ]
 
 [[package]]
@@ -2894,6 +2897,7 @@ version = "0.1.0"
 dependencies = [
  "bincode",
  "itertools 0.13.0",
+ "petgraph",
  "rayon",
  "serde",
 ]
@@ -3276,6 +3280,9 @@ checksum = "b4c5cc86750666a3ed20bdaf5ca2a0344f9c67674cae0515bec2da16fbaa47db"
 dependencies = [
  "fixedbitset",
  "indexmap",
+ "rayon",
+ "serde",
+ "serde_derive",
 ]
 
 [[package]]

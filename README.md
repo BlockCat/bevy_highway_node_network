@@ -41,8 +41,6 @@ Own graph, generation layer 1 with neighbourhoodsize: 30.
 | p1-dijkstra        | 159862ms |          |
 | p2                 | 6723ms   | 3200ms   |
 
-```
-
 ## Types
 
 https://docs.ndw.nu/handleidingen/nwb/nwb-basisstructuur/overige-attributen/

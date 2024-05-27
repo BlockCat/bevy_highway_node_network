@@ -20,7 +20,7 @@ use std::{collections::HashMap, fs::File, path::Path};
 /// Load shapefile.
 /// This shapefile is used vor visualization of road data.
 /// It loads all the road sections, and puts it in spatial data structures.
-#[derive(Serialize, Deserialize, Debug, Resource)]
+#[derive(Serialize, Deserialize, Debug, Resource, Clone)]
 pub struct RoadMap {
     pub roads: HashMap<RoadId, RoadSection>,
     pub junction_spatial: rstar::RTree<JunctionSpatialIndex, Params>,
@@ -39,7 +39,7 @@ impl RoadMap {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Params;
 
 impl RTreeParams for Params {
