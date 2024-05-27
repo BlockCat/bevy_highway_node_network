@@ -112,8 +112,8 @@ fn init_materials(
     });
 
     let route_material = polyline_materials.add(PolylineMaterial {
-        width: 2.0,
-        color: Color::ALICE_BLUE,
+        width: 9.0,
+        color: Color::PINK,
         ..Default::default()
     });
     commands.insert_resource(LoadedMaterials {

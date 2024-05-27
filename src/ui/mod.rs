@@ -12,7 +12,7 @@ use std::{
     ops::{Deref, DerefMut},
 };
 
-use self::layers::LayerState;
+use self::{layers::LayerState, route::RouteUIPlugin};
 
 mod layers;
 mod route;
@@ -38,6 +38,8 @@ impl DerefMut for DirectedNetworkGraphContainer {
 impl Plugin for HighwayUiPlugin {
     fn build(&self, app: &mut bevy::prelude::App) {
         app.add_plugins(EguiPlugin)
+            .add_plugins(RouteUIPlugin)
+            .add_event::<PointClickedEvent>()
             .insert_resource(LayerState {
                 preprocess_layers: 6,
                 neighbourhood_size: 30,
@@ -58,6 +60,9 @@ fn mouse_point_system(
     network: Res<DirectedNetworkGraphContainer>,
     road_map: Res<RoadMap>,
     camera_q: Query<(&GlobalTransform, &Camera)>,
+    
+    mut event_writer: EventWriter<PointClickedEvent>,
+    buttons: Res<ButtonInput<MouseButton>>,
     mut query: Query<&mut WorldEntity>,
 ) {
     if let Ok(window) = windows.get_single() {
@@ -96,7 +101,14 @@ fn mouse_point_system(
                         _ => {}
                     }
                 });
+
+                if buttons.just_released(MouseButton::Left) {
+                    event_writer.send(PointClickedEvent(node_id));
+                }
             }
         }
     }
 }
+
+#[derive(Debug, Clone, Event)]
+pub struct PointClickedEvent(pub NodeId);
