@@ -26,7 +26,7 @@ pub struct NetworkNode {
 }
 
 impl NetworkNode {
-    pub(crate) fn new(id: u32, start_edge_index: u32, last_edge_index: u32) -> Self {
+    pub fn new(id: u32, start_edge_index: u32, last_edge_index: u32) -> Self {
         Self {
             id,
             start_edge_index,
@@ -46,7 +46,7 @@ pub struct NetworkEdge {
 impl Eq for NetworkEdge {}
 
 impl NetworkEdge {
-    pub(crate) fn new(
+    pub fn new(
         data_id: u32,
         target_node: NodeId,
         edge_weight: f32,
@@ -82,7 +82,7 @@ pub struct DirectedNetworkGraph<D: NetworkData = ()> {
 }
 
 impl<D: NetworkData> DirectedNetworkGraph<D> {
-    pub(crate) fn new(nodes: Vec<NetworkNode>, edges: Vec<NetworkEdge>, data: D) -> Self {
+    pub fn new(nodes: Vec<NetworkNode>, edges: Vec<NetworkEdge>, data: D) -> Self {
         Self { data, nodes, edges }
     }
 

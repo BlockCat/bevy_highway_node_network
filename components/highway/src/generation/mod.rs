@@ -49,9 +49,12 @@ pub fn calculate_layer<D: NetworkData>(
     network: &DirectedNetworkGraph<D>,
     contraction_factor: f32,
 ) -> DirectedNetworkGraph<IntermediateData> {
-    let intermediate = phase_1(size, network);
+    let (duration, intermediate) = stopwatch!(phase_1(size, network));
 
-    let intermediate = phase_2(intermediate, contraction_factor);
+    println!("Finished phase 1 {}ms", duration.as_millis());
+
+    let (duration, intermediate) = stopwatch!(phase_2(intermediate, contraction_factor));
+    println!("Finished phase 2 {}ms", duration.as_millis());
 
     DirectedNetworkGraph::from(intermediate)
 }
@@ -72,12 +75,17 @@ pub(crate) fn phase_1<D: NetworkData>(
         network.edges().len()
     );
 
-    let edges = network
+    let (duration, edges) = stopwatch!(network
         .nodes()
         .par_iter()
         .enumerate()
         .flat_map_iter(|(id, _)| dijkstra::calculate_edges(id.into(), &computed, network))
-        .collect::<HashSet<_>>();
+        .collect::<HashSet<_>>());
+
+    println!(
+        "Finished computing (edges collections) {}ms",
+        duration.as_millis()
+    );
 
     let edges = edges
         .into_iter()

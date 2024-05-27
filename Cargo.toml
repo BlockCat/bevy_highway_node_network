@@ -8,7 +8,6 @@ version = "0.1.0"
 [dependencies]
 bevy = {version = "0.13", features = []}
 bevy_egui = {version = "0.27"}
-# bevy_prototype_lyon = "0.7"
 bevy_polyline = {git = "https://github.com/ForesightMiningSoftwareCorporation/bevy_polyline.git", branch = "bevy-0.13"}
 bevy_shapefile = {path = "./components/bevy_shapefile"}
 highway = {path = "./components/highway"}
