@@ -8,7 +8,7 @@ use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use crate::{JunctionId, RoadId};
 
 /// A road section, with id, points and bounding box
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct RoadSection {
     pub id: RoadId,
     pub points: Vec<Vec2>,
@@ -19,7 +19,13 @@ pub struct RoadSection {
     pub aabb: Aabb,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+impl RoadSection {
+    pub fn len(&self) -> f32 {
+        self.points.windows(2).map(|w| w[0].distance(w[1])).sum()
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct JunctionSpatialIndex {
     pub junction_id: JunctionId,
     pub location: Vec2,
@@ -43,7 +49,7 @@ impl PointDistance for JunctionSpatialIndex {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct RoadSpatialIndex {
     pub id: RoadId, // Points to a road in the RoadMap
     #[serde(
