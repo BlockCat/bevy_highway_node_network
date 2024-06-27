@@ -102,7 +102,6 @@ impl HighwayNetwork {
 
         unimplemented!()
 
-
         // for base_node in base.nodes() {
         //     let start_node_index = highway_nodes.len();
         //     let start_edge_index = edges.len();
@@ -116,7 +115,7 @@ impl HighwayNetwork {
 
         //     for layer in layers {
         //         for n in layer.nodes() {
-                    
+
         //         }
         //     }
 
