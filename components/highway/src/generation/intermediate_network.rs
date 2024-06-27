@@ -1,4 +1,4 @@
-use network::{
+use graph::{
     builder::{DirectedNetworkBuilder, EdgeBuilder, EdgeDirection, NodeBuilder},
     DirectedNetworkGraph, EdgeId, NetworkData, NodeId, ShortcutState,
 };

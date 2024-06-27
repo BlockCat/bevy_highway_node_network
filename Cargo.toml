@@ -13,7 +13,7 @@ bevy_shapefile = {path = "./components/bevy_shapefile"}
 highway = {path = "./components/highway"}
 
 bincode = "1.3.3"
-network = {path = "./components/network"}
+graph = {path = "./components/graph"}
 
 rusqlite = {version = "0.31", features = ["bundled"]}
 
@@ -37,4 +37,4 @@ opt-level = 3
 opt-level = 3
 
 [workspace]
-members = ["components/bevy_shapefile", "components/network", "components/highway", "tools/dbf_to_sql"]
+members = ["components/bevy_shapefile", "components/graph", "components/highway", "tools/dbf_to_sql"]

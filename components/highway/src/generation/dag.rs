@@ -1,4 +1,4 @@
-use network::{EdgeId, NodeId};
+use graph::{EdgeId, NodeId};
 use std::collections::{BinaryHeap, HashMap};
 
 #[derive(Debug, PartialEq, PartialOrd)]

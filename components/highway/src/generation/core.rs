@@ -1,5 +1,5 @@
 use super::intermediate_network::IntermediateNetwork;
-use network::NodeId;
+use graph::NodeId;
 use std::{
     collections::{HashSet, VecDeque},
     hash::Hash,

@@ -7,6 +7,6 @@ version = "0.1.0"
 
 [dependencies]
 itertools = "*"
-network = {path = "../network"}
+graph = {path = "../graph"}
 rayon = "1.5.1"
 serde = {version = "1.0.136", features = ["derive"]}

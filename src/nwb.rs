@@ -1,6 +1,6 @@
 use bevy::math::Vec2;
 use bevy_shapefile::{JunctionId, RoadId, RoadMap};
-use network::{
+use graph::{
     builder::{DirectedNetworkBuilder, EdgeBuilder, EdgeDirection, NodeBuilder},
     DirectedNetworkGraph, EdgeId, NetworkData, NodeId, ShortcutState,
 };
@@ -44,7 +44,7 @@ impl NetworkData for NWBNetworkData {
         self.edge_id[edge.0 as usize] = data;
     }
 
-    fn edge_road_id(&self, edge: EdgeId) -> network::ShortcutState<usize> {
+    fn edge_road_id(&self, edge: EdgeId) -> graph::ShortcutState<usize> {
         ShortcutState::Single(self.edge_id[edge.0 as usize].num())
     }
 }
@@ -97,11 +97,11 @@ impl EdgeBuilder for RoadEdge {
         self.sql_id
     }
 
-    fn source(&self) -> network::NodeId {
+    fn source(&self) -> graph::NodeId {
         self.source
     }
 
-    fn target(&self) -> network::NodeId {
+    fn target(&self) -> graph::NodeId {
         self.target
     }
 
@@ -109,7 +109,7 @@ impl EdgeBuilder for RoadEdge {
         self.distance
     }
 
-    fn direction(&self) -> network::builder::EdgeDirection {
+    fn direction(&self) -> graph::builder::EdgeDirection {
         self.direction
     }
 

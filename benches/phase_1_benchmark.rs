@@ -1,7 +1,7 @@
 use bevy_dutch_road_highway_node_network::{nwb::NWBNetworkData, read_file};
 use criterion::{criterion_group, criterion_main, Criterion};
 use highway::generation::calculate_layer;
-use network::DirectedNetworkGraph;
+use graph::DirectedNetworkGraph;
 
 fn bench(b: &mut Criterion) {
     let network: DirectedNetworkGraph<NWBNetworkData> =

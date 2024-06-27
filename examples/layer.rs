@@ -1,6 +1,6 @@
 use bevy_dutch_road_highway_node_network::{nwb::NWBNetworkData, read_file, write_file};
 use highway::generation::calculate_layer;
-use network::{DirectedNetworkGraph, NetworkData};
+use graph::{DirectedNetworkGraph, NetworkData};
 
 fn main() {
     let network: DirectedNetworkGraph<NWBNetworkData> =

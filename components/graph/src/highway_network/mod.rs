@@ -84,17 +84,17 @@ impl HighwayNetwork {
 
         let mut collect_mapper = HashMap::new();
 
-        for node in base.nodes() {
+        for (id, node) in base.nodes().into_iter().enumerate() {
             let out_edges = base.out_edges_raw(node).collect_vec();
             let in_edges = base.in_edges_raw(node).collect_vec();
-            collect_mapper.insert(node.id, vec![(node, out_edges, in_edges)]);
+            collect_mapper.insert(id, vec![(node, out_edges, in_edges)]);
         }
 
         for layer in &layers {
-            for node in layer.nodes() {
+            for (id, node) in layer.nodes().into_iter().enumerate() {
                 let out_edges = layer.out_edges_raw(node).collect_vec();
                 let in_edges = layer.in_edges_raw(node).collect_vec();
-                collect_mapper.entry(node.id).and_modify(|d| {
+                collect_mapper.entry(id).and_modify(|d| {
                     d.push((node, out_edges, in_edges));
                 });
             }

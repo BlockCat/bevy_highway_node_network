@@ -1,5 +1,5 @@
 use super::ComputedState;
-use network::{iterators::F32, DirectedNetworkGraph, EdgeId, NetworkData, NodeId};
+use graph::{iterators::F32, DirectedNetworkGraph, EdgeId, NetworkData, NodeId};
 use std::{
     cmp::Reverse,
     collections::{HashMap, VecDeque},
@@ -191,7 +191,7 @@ fn reference_distance(
 #[cfg(test)]
 mod tests {
 
-    use network::{
+    use graph::{
         builder::EdgeDirection, create_network, DirectedNetworkGraph, NetworkEdge, NetworkNode,
         NodeId,
     };

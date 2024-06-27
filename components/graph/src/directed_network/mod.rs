@@ -14,11 +14,32 @@ pub mod builder;
 pub mod iterators;
 pub mod node_data;
 
+#[derive(Debug, PartialEq, Eq, Clone, Serialize, Deserialize)]
+pub struct NodeIndex(u32);
+
+impl From<u32> for NodeIndex {
+    fn from(value: u32) -> Self {
+        NodeIndex(value)
+    }
+}
+
+impl From<NodeIndex> for u32 {
+    fn from(value: NodeIndex) -> Self {
+        value.0
+    }
+}
+
+impl NodeIndex {
+    pub fn new(value: u32) -> Self {
+        NodeIndex(value)
+    }
+}
+
 /// A node in the graph.
 #[derive(Debug, PartialEq, Eq, Clone, Serialize, Deserialize)]
 pub struct NetworkNode {
     /// A unique identifier for the node. It is (unfortunately) not the junction Id.
-    pub id: u32,
+    pub id: NodeIndex,
     /// The index of the first edge in the list of edges that are connected to this node.
     pub start_edge_index: u32,
     /// The index of the last edge in the list of edges that are connected to this node.
@@ -28,7 +49,7 @@ pub struct NetworkNode {
 impl NetworkNode {
     pub fn new(id: u32, start_edge_index: u32, last_edge_index: u32) -> Self {
         Self {
-            id,
+            id: id.into(),
             start_edge_index,
             last_edge_index,
         }

@@ -12,7 +12,7 @@ use bevy_egui::{egui, EguiContexts};
 use bevy_shapefile::RoadId;
 use futures_lite::future;
 use highway::generation::intermediate_network::IntermediateData;
-use network::{DirectedNetworkGraph, EdgeId, NetworkData};
+use graph::{DirectedNetworkGraph, EdgeId, NetworkData};
 
 use super::DirectedNetworkGraphContainer;
 
@@ -214,12 +214,12 @@ fn process_edges<A: NetworkData>(
     for id in 0..network.edges().len() {
         let id = EdgeId::from(id);
         match network.data.edge_road_id(id) {
-            network::ShortcutState::Single(a) => {
+            graph::ShortcutState::Single(a) => {
                 road_data.entry(RoadId::from(a)).and_modify(|f| {
                     *f = layer_id;
                 });
             }
-            network::ShortcutState::Shortcut(b) => {
+            graph::ShortcutState::Shortcut(b) => {
                 for a in b {
                     road_data.entry(RoadId::from(a)).and_modify(|f| {
                         *f = layer_id;

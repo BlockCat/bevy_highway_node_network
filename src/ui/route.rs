@@ -8,7 +8,7 @@ use bevy::tasks::Task;
 use bevy_egui::{egui, EguiContexts};
 use bevy_shapefile::RoadMap;
 use futures_lite::future;
-use network::{iterators::F32, DirectedNetworkGraph, EdgeId, NetworkData, NodeId};
+use graph::{iterators::F32, DirectedNetworkGraph, EdgeId, NetworkData, NodeId};
 use std::{
     cmp::Reverse,
     collections::{BinaryHeap, HashMap, HashSet},

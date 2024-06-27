@@ -6,15 +6,16 @@ use bevy::{prelude::*, window::PrimaryWindow};
 use bevy_egui::EguiPlugin;
 use bevy_shapefile::RoadMap;
 pub use layers::PreProcess;
-use network::{DirectedNetworkGraph, NodeId};
+use graph::{DirectedNetworkGraph, NodeId};
 use std::{
     collections::HashSet,
     ops::{Deref, DerefMut},
 };
 
-use self::{layers::LayerState, route::RouteUIPlugin};
+use self::{filter::FilterUIPlugin, layers::LayerState, route::RouteUIPlugin};
 
 mod layers;
+mod filter;
 mod route;
 
 pub struct HighwayUiPlugin;
@@ -39,6 +40,7 @@ impl Plugin for HighwayUiPlugin {
     fn build(&self, app: &mut bevy::prelude::App) {
         app.add_plugins(EguiPlugin)
             .add_plugins(RouteUIPlugin)
+            .add_plugins(FilterUIPlugin)
             .add_event::<PointClickedEvent>()
             .insert_resource(LayerState {
                 preprocess_layers: 6,
@@ -60,7 +62,7 @@ fn mouse_point_system(
     network: Res<DirectedNetworkGraphContainer>,
     road_map: Res<RoadMap>,
     camera_q: Query<(&GlobalTransform, &Camera)>,
-    
+
     mut event_writer: EventWriter<PointClickedEvent>,
     buttons: Res<ButtonInput<MouseButton>>,
     mut query: Query<&mut WorldEntity>,

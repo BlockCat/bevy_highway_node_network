@@ -1,6 +1,6 @@
 use self::intermediate_network::{IntermediateData, IntermediateNetwork};
 use crate::generation::intermediate_network::IntermediateEdge;
-use network::{
+use graph::{
     BackwardNeighbourhood, DirectedNetworkGraph, ForwardNeighbourhood, NetworkData, ShortcutState,
 };
 use rayon::prelude::*;
@@ -98,7 +98,7 @@ pub(crate) fn phase_1<D: NetworkData>(
                 edge.distance(),
                 ShortcutState::Single(edge.edge_id),
                 network.data.edge_road_id(edge_id),
-                network::builder::EdgeDirection::Forward,
+                graph::builder::EdgeDirection::Forward,
             )
         })
         .collect();
