@@ -933,6 +933,7 @@ dependencies = [
  "rayon",
  "rstar",
  "serde",
+ "serde_json",
  "shapefile",
 ]
 

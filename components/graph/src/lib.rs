@@ -27,7 +27,7 @@ pub struct Backward;
 pub struct F32(pub f32);
 
 impl Ord for F32 {
-    fn cmp(&self, other: &Self) -> std::cmp::Ordering {        
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
         self.partial_cmp(other).unwrap()
     }
 }

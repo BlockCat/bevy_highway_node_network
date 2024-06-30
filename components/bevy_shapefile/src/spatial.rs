@@ -81,3 +81,93 @@ where
 
     (min, max).serialize(serializer)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use rstar::RTree;
+
+    #[test]
+    fn test_junction_spatial_index() {
+        let junction = JunctionSpatialIndex {
+            junction_id: JunctionId(0),
+            location: Vec2::new(0.0, 0.0),
+        };
+
+        let junction2 = JunctionSpatialIndex {
+            junction_id: JunctionId(1),
+            location: Vec2::new(1.0, 1.0),
+        };
+
+        let junction3 = JunctionSpatialIndex {
+            junction_id: JunctionId(2),
+            location: Vec2::new(2.0, 2.0),
+        };
+
+        let mut rtree = RTree::new();
+        rtree.insert(junction);
+        rtree.insert(junction2);
+        rtree.insert(junction3);
+
+        let nearest = rtree.nearest_neighbor(&[0.1, 0.1]);
+        assert_eq!(nearest.unwrap().junction_id, JunctionId(0));
+    }
+
+    #[test]
+    fn test_road_spatial_index() {
+        let road = RoadSpatialIndex {
+            id: RoadId(0),
+            aabb: Aabb::from_min_max(Vec3::new(0.0, 0.0, 0.0), Vec3::new(1.0, 1.0, 1.0)),
+        }
+        .envelope();
+
+        let road2 = RoadSpatialIndex {
+            id: RoadId(1),
+            aabb: Aabb::from_min_max(Vec3::new(1.0, 1.0, 1.0), Vec3::new(2.0, 2.0, 2.0)),
+        }
+        .envelope();
+
+        let road3 = RoadSpatialIndex {
+            id: RoadId(2),
+            aabb: Aabb::from_min_max(Vec3::new(2.0, 2.0, 2.0), Vec3::new(3.0, 3.0, 3.0)),
+        }
+        .envelope();
+
+        assert_eq!(road, rstar::AABB::from_corners([0.0, 0.0], [1.0, 1.0]));
+        assert_eq!(road2, rstar::AABB::from_corners([1.0, 1.0], [2.0, 2.0]));
+        assert_eq!(road3, rstar::AABB::from_corners([2.0, 2.0], [3.0, 3.0]));
+    }
+
+    #[test]
+    fn serialize_road_section() {
+        let road_section = RoadSection {
+            id: RoadId(0),
+            points: vec![Vec2::new(0.0, 0.0), Vec2::new(1.0, 1.0)],
+            aabb: Aabb::from_min_max(Vec3::new(0.0, 0.0, 0.0), Vec3::new(1.0, 1.0, 1.0)),
+        };
+
+        let serialized = serde_json::to_string(&road_section).unwrap();
+
+        assert_eq!(
+            serialized,
+            "{\"id\":0,\"points\":[[0.0,0.0],[1.0,1.0]],\"aabb\":[[0.0,0.0,0.0],[1.0,1.0,1.0]]}"
+        );
+    }
+
+    #[test]
+    fn deserialize_road_section() {
+        let serialized =
+            "{\"id\":0,\"points\":[[0.0,0.0],[1.0,1.0]],\"aabb\":[[0.0,0.0,0.0],[1.0,1.0,1.0]]}";
+        let road_section: RoadSection = serde_json::from_str(serialized).unwrap();
+
+        assert_eq!(road_section.id, RoadId(0));
+        assert_eq!(
+            road_section.points,
+            vec![Vec2::new(0.0, 0.0), Vec2::new(1.0, 1.0)]
+        );
+        assert_eq!(
+            road_section.aabb,
+            Aabb::from_min_max(Vec3::new(0.0, 0.0, 0.0), Vec3::new(1.0, 1.0, 1.0))
+        );
+    }
+}
