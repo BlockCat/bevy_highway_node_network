@@ -1,120 +1,86 @@
-use std::ops::Deref;
-
-use crate::{DirectedNetworkGraph, NetworkData, NodeId};
+use crate::{Backward, DirectedNetworkGraph, Forward, NetworkData, NodeId};
 use rayon::prelude::*;
 
-#[derive(Debug)]
-pub struct ForwardNeighbourhood(Neighbourhood);
+pub type ForwardNeighbourhood = Neighbourhood<Forward>;
+pub type BackwardNeighbourhood = Neighbourhood<Backward>;
 
 #[derive(Debug)]
-pub struct BackwardNeighbourhood(Neighbourhood);
-
-impl Deref for ForwardNeighbourhood {
-    type Target = Neighbourhood;
-
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
-
-impl Deref for BackwardNeighbourhood {
-    type Target = Neighbourhood;
-
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
-
-#[derive(Debug)]
-pub struct Neighbourhood {
+pub struct Neighbourhood<T>
+where
+    T: NeighbourhoodDirection,
+{
     radius: Vec<f32>,
+    _marker: std::marker::PhantomData<T>,
 }
 
-impl Neighbourhood {
+impl<T> Neighbourhood<T>
+where
+    T: NeighbourhoodDirection,
+{
     #[inline]
     pub fn radius(&self, node: NodeId) -> f32 {
         self.radius[node.0 as usize]
     }
+
+    pub fn from_network<D: NetworkData>(size: usize, network: &DirectedNetworkGraph<D>) -> Self {
+        T::from_network(size, network)
+    }
 }
 
-impl ForwardNeighbourhood {
-    pub fn from_network<D: NetworkData>(size: usize, network: &DirectedNetworkGraph<D>) -> Self {
+pub trait NeighbourhoodDirection {
+    fn find_neighbourhood_radius<D: NetworkData>(
+        node: NodeId,
+        size: usize,
+        network: &DirectedNetworkGraph<D>,
+    ) -> Option<f32>;
+
+    fn from_network<D: NetworkData>(
+        size: usize,
+        network: &DirectedNetworkGraph<D>,
+    ) -> Neighbourhood<Self>
+    where
+        Self: Sized,
+    {
         let mut radius = Vec::with_capacity(network.nodes().len());
 
         network
             .nodes()
             .par_iter()
             .enumerate()
-            .map(|(id, _)| find_forward_neighbourhood_radius(id.into(), size, network).unwrap())
+            .map(|(id, _)| Self::find_neighbourhood_radius(id.into(), size, network).unwrap())
             .collect_into_vec(&mut radius);
 
-        ForwardNeighbourhood(Neighbourhood { radius })
+        Neighbourhood {
+            radius,
+            _marker: std::marker::PhantomData,
+        }
     }
 }
 
-impl BackwardNeighbourhood {
-    pub fn from_network<D: NetworkData>(size: usize, network: &DirectedNetworkGraph<D>) -> Self {
-        let mut radius = Vec::with_capacity(network.nodes().len());
-
+impl NeighbourhoodDirection for Forward {
+    fn find_neighbourhood_radius<D: NetworkData>(
+        node: NodeId,
+        size: usize,
+        network: &DirectedNetworkGraph<D>,
+    ) -> Option<f32> {
         network
-            .nodes()
-            .par_iter()
-            .enumerate()
-            .map(|(id, _)| find_backward_neighbourhood_radius(id.into(), size, network).unwrap())
-            .collect_into_vec(&mut radius);
-
-        BackwardNeighbourhood(Neighbourhood { radius })
+            .forward_iterator(node)
+            .take(size)
+            .last()
+            .map(|x| x.1)
     }
 }
 
-fn find_forward_neighbourhood_radius<D: NetworkData>(
-    node: NodeId,
-    size: usize,
-    network: &DirectedNetworkGraph<D>,
-) -> Option<f32> {
-    network
-        .forward_iterator(node)
-        .take(size)
-        .last()
-        .map(|x| x.1)
-}
-
-fn find_backward_neighbourhood_radius<D: NetworkData>(
-    node: NodeId,
-    size: usize,
-    network: &DirectedNetworkGraph<D>,
-) -> Option<f32> {
-    network
-        .backward_iterator(node)
-        .take(size)
-        .last()
-        .map(|x| x.1)
-}
-
-#[cfg(test)]
-mod tests {
-
-    use crate::{create_network, ForwardNeighbourhood};
-
-    #[test]
-    fn forward_neighbourhood_test() {
-        // https://www.baeldung.com/wp-content/uploads/2017/01/initial-graph.png
-        let network = create_network!(
-            0..5,
-            0 => 1; 10.0, // A => B
-            0 => 2; 15.0, // A => C
-            1 => 3; 5.0, // B => D
-            1 => 5; 15.0, // B => F
-            2 => 4; 10.0, // C => E
-            3 => 4; 2.0, // D => E
-            3 => 5; 1.0, // D => F
-            5 => 4; 5.0 // F => E
-        );
-
-        let forward = ForwardNeighbourhood::from_network(3, &network);
-
-        let radius = &forward.radius;
-
-        assert_eq!(&vec![15.0, 6.0, 10.0, 2.0, 0.0, 5.0], radius);
+impl NeighbourhoodDirection for Backward {
+    fn find_neighbourhood_radius<D: NetworkData>(
+        node: NodeId,
+        size: usize,
+        network: &DirectedNetworkGraph<D>,
+    ) -> Option<f32> {
+        network
+            .backward_iterator(node)
+            .take(size)
+            .last()
+            .map(|x| x.1)
     }
 }

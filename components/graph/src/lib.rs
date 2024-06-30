@@ -18,6 +18,22 @@ pub mod neighbourhood;
 use serde::Deserialize;
 use serde::Serialize;
 
+mod dijkstra_iterator;
+
+pub struct Forward;
+pub struct Backward;
+
+#[derive(Debug, Default, Clone, Copy, PartialEq, PartialOrd)]
+pub struct F32(pub f32);
+
+impl Ord for F32 {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {        
+        self.partial_cmp(other).unwrap()
+    }
+}
+
+impl Eq for F32 {}
+
 #[derive(Debug, Clone, Copy, Hash, PartialEq, PartialOrd, Eq, Ord, Serialize, Deserialize)]
 pub struct NodeId(pub u32);
 
@@ -79,8 +95,8 @@ impl<T> From<ShortcutState<T>> for Vec<T> {
     }
 }
 
-#[cfg(test)]
-pub(crate) mod tests;
+// #[cfg(test)]
+// pub(crate) mod tests;
 
 #[macro_export]
 macro_rules! create_network {

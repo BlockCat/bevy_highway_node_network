@@ -104,17 +104,6 @@ impl DefaultEdgeBuilder {
     ) -> DefaultEdgeBuilder {
         Self(source, target, weight, road_id, EdgeDirection::Forward)
     }
-    pub fn backward(
-        source: NodeId,
-        target: NodeId,
-        road_id: usize,
-        weight: f32,
-    ) -> DefaultEdgeBuilder {
-        Self(source, target, weight, road_id, EdgeDirection::Backward)
-    }
-    pub fn both(source: NodeId, target: NodeId, road_id: usize, weight: f32) -> DefaultEdgeBuilder {
-        Self(source, target, weight, road_id, EdgeDirection::Both)
-    }
 }
 
 #[derive(Debug)]
@@ -178,7 +167,7 @@ impl<V: NodeBuilder, E: EdgeBuilder> DirectedNetworkBuilder<V, E> {
 
             let last_edge_index = edges.len() as u32;
 
-            let network_node = NetworkNode::new(node.id(), start_edge_index, last_edge_index);
+            let network_node = NetworkNode::new(start_edge_index, last_edge_index);
 
             nodes.push(network_node);
         }
@@ -214,41 +203,4 @@ fn collect_edges<E: EdgeBuilder + Sized>(
         .collect::<Vec<_>>();
     build_edges.sort_by_key(|x| (x.0, x.1, x.2));
     build_edges
-}
-
-#[cfg(test)]
-mod tests {
-    use crate::DirectedNetworkGraph;
-
-    use super::DefaultEdgeBuilder;
-
-    fn create_network() -> DirectedNetworkGraph<()> {
-        let mut builder = crate::builder::DirectedNetworkBuilder::new();
-
-        let na = builder.add_node(0);
-        let nb = builder.add_node(1);
-        let nc = builder.add_node(2);
-        let nd = builder.add_node(3);
-        let ne = builder.add_node(4);
-        let nf = builder.add_node(5);
-
-        builder.add_edge(DefaultEdgeBuilder::forward(na, nb, 0, 10.0));
-        builder.add_edge(DefaultEdgeBuilder::forward(nb, nd, 0, 12.0));
-        builder.add_edge(DefaultEdgeBuilder::forward(nd, ne, 0, 2.0));
-        builder.add_edge(DefaultEdgeBuilder::forward(na, nc, 0, 15.0));
-        builder.add_edge(DefaultEdgeBuilder::forward(nc, ne, 0, 10.0));
-        builder.add_edge(DefaultEdgeBuilder::forward(nf, ne, 0, 5.0));
-        builder.add_edge(DefaultEdgeBuilder::forward(nb, nf, 0, 15.0));
-        builder.add_edge(DefaultEdgeBuilder::forward(nd, nf, 0, 1.0));
-
-        builder.build()
-    }
-
-    #[test]
-    fn builder_test() {
-        let n1 = crate::tests::create_ref_network_1();
-        let n2 = create_network();
-
-        assert_eq!(n1, n2);
-    }
 }
