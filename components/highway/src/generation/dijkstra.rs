@@ -66,14 +66,14 @@ pub fn create_directed_acyclic_graph<D: NetworkData>(
 
         for (id, child_edge) in network.out_edges(entry.state.current) {
             let child = child_edge.target();
-            let next_distance = entry.state.distance + child_edge.distance();
+            let next_distance = entry.state.distance + child_edge.weight();
 
             heap.push(DijkstraNodeState {
                 current: child,
                 distance: next_distance,
                 parent: ParentEntry {
                     parent: entry.state.current,
-                    parent_edge_distance: child_edge.distance(),
+                    parent_edge_distance: child_edge.weight(),
                     parent_edge: id.into(),
                     active,
                 },
@@ -142,11 +142,11 @@ fn initialize_heap<D: NetworkData>(
     for (id, edge) in network.out_edges(s0) {
         // assert!(s0 != edge.target());
         heap.push(DijkstraNodeState {
-            distance: edge.distance(),
+            distance: edge.weight(),
             current: edge.target(),
             parent: ParentEntry {
                 parent: s0,
-                parent_edge_distance: edge.distance(),
+                parent_edge_distance: edge.weight(),
                 parent_edge: id.into(),
                 active: true,
             },

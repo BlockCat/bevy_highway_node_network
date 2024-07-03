@@ -173,7 +173,7 @@ fn explore_node<D: NetworkData>(
 ) {
     for (id, edge) in network.out_edges(source) {
         let target = edge.target();
-        let distance = old_distance + edge.distance();
+        let distance = old_distance + edge.weight();
 
         heap.push((Reverse(F32(distance)), F32(distance), target, (source, id)));
     }

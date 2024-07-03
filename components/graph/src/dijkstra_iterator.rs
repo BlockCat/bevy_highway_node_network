@@ -43,7 +43,7 @@ where
             }
             for (_, edge) in T::edges(self.network, node) {
                 let target = edge.target();
-                let edge_distance = edge.distance();
+                let edge_distance = edge.weight();
 
                 self.heap
                     .push(Reverse((F32(distance + edge_distance), target)));

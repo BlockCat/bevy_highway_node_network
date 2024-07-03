@@ -95,7 +95,7 @@ pub(crate) fn phase_1<D: NetworkData>(
             IntermediateEdge::new(
                 source,
                 edge.target(),
-                edge.distance(),
+                edge.weight(),
                 ShortcutState::Single(edge.edge_id),
                 network.data.edge_road_id(edge_id),
                 graph::builder::EdgeDirection::Forward,

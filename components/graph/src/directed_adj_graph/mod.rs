@@ -58,7 +58,7 @@ impl NetworkEdge {
         self.target_node.into()
     }
 
-    pub fn distance(&self) -> f32 {
+    pub fn weight(&self) -> f32 {
         self.edge_weight
     }
 }

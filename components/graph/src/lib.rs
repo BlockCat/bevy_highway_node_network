@@ -6,11 +6,12 @@
 
 use std::ops::Deref;
 
-pub use directed_graph::*;
+pub use directed_adj_graph::*;
 pub use neighbourhood::*;
 
 /// Tja
-pub mod directed_graph;
+pub mod directed_adj_graph;
+pub mod directed_map_graph;
 
 pub mod highway_network;
 pub mod neighbourhood;
