@@ -1,6 +1,9 @@
+use itertools::Itertools;
+use rayon::prelude::*;
+
 use crate::{
-    builder::EdgeDirection, DirectedNetworkGraph, EdgeId, NetworkData, NetworkEdge, NetworkNode,
-    NodeId, ShortcutState,
+    DirectedNetworkGraph, EdgeDirection, EdgeId, NetworkData, NetworkEdge, NetworkNode, NodeId,
+    ShortcutState,
 };
 use std::collections::HashMap;
 
@@ -25,6 +28,15 @@ impl<D: NetworkData> DirectedMapGraph<D> {
             data: D::with_size(0, 0),
             ..Default::default()
         }
+    }
+
+    pub fn nodes(&self) -> Vec<NodeId> {
+        self.out_edges.keys().cloned().collect()
+    }
+
+    pub fn out_edges(&self, node: NodeId) -> Vec<Edge> {
+        &self.out_edges[&node]
+
     }
 
     pub fn add_node(&mut self, data: D::NodeData) -> NodeId {
@@ -182,6 +194,71 @@ where
     edges.into_iter().enumerate().map(move |(i, e)| {
         NetworkEdge::new(offset + i as u32, target_node(&e), e.weight, direction)
     })
+}
+
+pub trait EdgeBuilder {
+    type GraphData: NetworkData<NodeData = ()>;
+
+    fn source(&self) -> NodeId;
+    fn target(&self) -> NodeId;
+    fn weight(&self) -> f32;
+    fn road_id(&self) -> ShortcutState<usize>;
+    fn edge_data(&self) -> <Self::GraphData as NetworkData>::EdgeData;
+}
+
+impl<E> From<Vec<E>> for DirectedMapGraph<E::GraphData>
+where
+    E: EdgeBuilder,
+{
+    fn from(edges: Vec<E>) -> Self {
+        let mut graph = DirectedMapGraph::new();
+        let nodes = edges
+            .iter()
+            .map(|edge| [edge.source(), edge.target()])
+            .flatten()
+            .sorted_by_key(|n| n.0)
+            .collect::<Vec<_>>();
+
+        let convert = nodes
+            .into_iter()
+            .map(|n| (n, graph.add_node(())))
+            .collect::<HashMap<_, _>>();
+
+        for edge in edges {
+            graph.add_edge(
+                convert[&edge.source()],
+                convert[&edge.target()],
+                edge.weight(),
+                edge.road_id(),
+                edge.edge_data(),
+            );
+        }
+
+        graph
+    }
+}
+
+impl<E> FromIterator<E> for DirectedMapGraph<E::GraphData>
+where
+    E: EdgeBuilder,
+{
+    fn from_iter<T: IntoIterator<Item = E>>(iter: T) -> Self {
+        let edges = iter.into_iter().collect::<Vec<_>>();
+        edges.into()
+    }
+}
+
+impl<E> FromParallelIterator<E> for DirectedMapGraph<E::GraphData>
+where
+    E: EdgeBuilder + Send + Sync,
+{
+    fn from_par_iter<I>(par_iter: I) -> Self
+    where
+        I: rayon::iter::IntoParallelIterator<Item = E>,
+    {
+        let edges = par_iter.into_par_iter().collect::<Vec<_>>();
+        edges.into()
+    }
 }
 
 #[cfg(test)]

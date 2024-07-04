@@ -1,13 +1,32 @@
-use self::{builder::EdgeDirection, iterators::EdgeIterator};
+use self::iterators::EdgeIterator;
 use crate::{
     dijkstra_iterator::DijkstraIterator, Backward, EdgeId, Forward, Neighbourhood, NodeId,
 };
 pub use node_data::NetworkData;
 use serde::{Deserialize, Serialize};
+use std::ops::Neg;
 
-pub mod builder;
 pub mod iterators;
 pub mod node_data;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
+pub enum EdgeDirection {
+    Forward,
+    Both,
+    Backward,
+}
+
+impl Neg for EdgeDirection {
+    type Output = EdgeDirection;
+
+    fn neg(self) -> Self::Output {
+        match self {
+            EdgeDirection::Forward => EdgeDirection::Backward,
+            EdgeDirection::Both => EdgeDirection::Both,
+            EdgeDirection::Backward => EdgeDirection::Forward,
+        }
+    }
+}
 
 /// A node in the graph.
 #[derive(Debug, PartialEq, Eq, Clone, Serialize, Deserialize)]

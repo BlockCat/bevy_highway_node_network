@@ -1,8 +1,9 @@
-use self::intermediate_network::{IntermediateData, IntermediateNetwork};
 use crate::generation::intermediate_network::IntermediateEdge;
 use graph::{
-    BackwardNeighbourhood, DirectedNetworkGraph, ForwardNeighbourhood, NetworkData, ShortcutState,
+    directed_map_graph::DirectedMapGraph, BackwardNeighbourhood, DirectedNetworkGraph,
+    ForwardNeighbourhood, NetworkData, ShortcutState,
 };
+use intermediate_network::{IntermediateData, IntermediateNetwork};
 use rayon::prelude::*;
 use std::collections::HashSet;
 
@@ -61,7 +62,7 @@ pub fn calculate_layer<D: NetworkData>(
 pub(crate) fn phase_1<D: NetworkData>(
     size: usize,
     network: &DirectedNetworkGraph<D>,
-) -> IntermediateNetwork {
+) -> DirectedMapGraph<IntermediateData> {
     println!("Start computing (forward backward)");
 
     let (duration, computed) = stopwatch!(ComputedState::new(size, network));
@@ -88,7 +89,7 @@ pub(crate) fn phase_1<D: NetworkData>(
         duration.as_millis()
     );
 
-    let edges = edges
+    let graph = edges
         .into_iter()
         .map(|(source, edge_id)| {
             let edge = network.edge(edge_id);
@@ -98,13 +99,13 @@ pub(crate) fn phase_1<D: NetworkData>(
                 edge.weight(),
                 ShortcutState::Single(edge.edge_id),
                 network.data.edge_road_id(edge_id),
-                graph::builder::EdgeDirection::Forward,
+                graph::EdgeDirection::Forward,
             )
         })
         .collect();
     println!("Finished computing (edges collections)");
 
-    edges
+    graph
 }
 
 /**

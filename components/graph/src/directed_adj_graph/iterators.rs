@@ -1,4 +1,4 @@
-use crate::{builder::EdgeDirection, EdgeId, NetworkEdge};
+use crate::{EdgeDirection, EdgeId, NetworkEdge};
 use std::{ops::Range, slice::Iter};
 
 pub struct EdgeIterator<'a> {

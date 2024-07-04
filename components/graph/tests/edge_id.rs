@@ -1,4 +1,6 @@
-use graph::EdgeId;
+use std::ops::Neg;
+
+use graph::{EdgeDirection, EdgeId};
 
 #[test]
 fn edge_from_usize_test() {
@@ -17,4 +19,11 @@ fn shortcut_into() {
     let d: Vec<i32> = b.into();
     assert_eq!(c, vec![1]);
     assert_eq!(d, vec![1, 2, 3]);
+}
+
+#[test]
+fn reverse() {
+    assert_eq!(EdgeDirection::Backward.neg(), EdgeDirection::Forward);
+    assert_eq!(EdgeDirection::Forward.neg(), EdgeDirection::Backward);
+    assert_eq!(EdgeDirection::Both.neg(), EdgeDirection::Both);
 }

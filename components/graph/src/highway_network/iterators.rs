@@ -1,5 +1,5 @@
 use super::{HighwayNetwork, NetworkEdge};
-use crate::{builder::EdgeDirection, EdgeId, NodeId};
+use crate::{EdgeDirection, EdgeId, NodeId};
 use core::slice::Iter;
 use std::ops::Range;
 

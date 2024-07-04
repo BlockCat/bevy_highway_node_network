@@ -1,11 +1,8 @@
-use std::collections::HashMap;
-
+use self::iterators::EdgeIterator;
+use crate::{DirectedNetworkGraph, EdgeDirection, NodeId};
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
-
-use crate::{builder::EdgeDirection, DirectedNetworkGraph, NodeId};
-
-use self::iterators::EdgeIterator;
+use std::collections::HashMap;
 
 mod iterators;
 

@@ -99,27 +99,38 @@ impl<T> From<ShortcutState<T>> for Vec<T> {
 // #[cfg(test)]
 // pub(crate) mod tests;
 
+
 #[macro_export]
 macro_rules! create_network {
     ($s:literal..$e:literal, $($a:literal => $b:literal; $c: expr),+) => {
     {
-        use $crate::builder::DefaultEdgeBuilder;
-        use $crate::builder::DirectedNetworkBuilder;
-        let mut builder = DirectedNetworkBuilder::<usize, DefaultEdgeBuilder>::new();
+        use $crate::directed_map_graph::{DirectedMapGraph, Edge};
+        use $crate::{NodeId, ShortcutState};
+        use $crate::directed_adj_graph::DirectedNetworkGraph;
+        // use $crate::builder::DefaultEdgeBuilder;
+        // use $crate::::DirectedNetworkBuilder;
+        // let mut builder = DirectedNetworkBuilder::<usize, DefaultEdgeBuilder>::new();
+        let mut builder = DirectedMapGraph::<()>::new();
 
         for x in $s..=$e {
-            builder.add_node(x);
+            builder.add_node(());
         }
 
         $({
-            let source = builder.add_node($a);
-            let target = builder.add_node($b);
+            let source = NodeId($a as u32);
+            let target = NodeId($b as u32);
 
-            builder.add_edge(DefaultEdgeBuilder::forward(source, target, 0, $c));
-
+            builder.add_edge(source, target, $c, ShortcutState::Single(0), ());
         })+
 
-        builder.build::<()>()
+        DirectedNetworkGraph::from(builder)
     }
     };
 }
+
+// Stuff we have
+// - Junction Id <- rijkswaterstaat
+// - Road Id <- rijkswaterstaat
+
+// - Node Id <- graph
+// - Edge Id <- graph
