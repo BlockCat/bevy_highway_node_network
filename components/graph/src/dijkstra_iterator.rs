@@ -1,21 +1,19 @@
-use crate::{
-    Backward, DirectedNetworkGraph, EdgeId, Forward, NetworkData, NetworkEdge, NodeId, F32,
-};
+use crate::{Backward, DirectedNetworkGraph, EdgeId, Forward, NetworkEdge, NodeId, F32};
 use std::{
     cmp::Reverse,
     collections::{BinaryHeap, HashSet},
 };
 
-pub struct DijkstraIterator<'a, T: DijkstraDirection, D: NetworkData> {
-    pub network: &'a DirectedNetworkGraph<D>,
+pub struct DijkstraIterator<'a, T: DijkstraDirection> {
+    pub network: &'a DirectedNetworkGraph,
     pub distance: f32,
     pub visited: HashSet<NodeId>,
     pub heap: BinaryHeap<Reverse<(F32, NodeId)>>,
     _marker: std::marker::PhantomData<T>,
 }
 
-impl<'a, T: DijkstraDirection, D: NetworkData> DijkstraIterator<'a, T, D> {
-    pub fn new(network: &'a DirectedNetworkGraph<D>, start: NodeId) -> Self {
+impl<'a, T: DijkstraDirection> DijkstraIterator<'a, T> {
+    pub fn new(network: &'a DirectedNetworkGraph, start: NodeId) -> Self {
         let mut heap = BinaryHeap::new();
         heap.push(Reverse((F32(0.0), start)));
 
@@ -29,10 +27,9 @@ impl<'a, T: DijkstraDirection, D: NetworkData> DijkstraIterator<'a, T, D> {
     }
 }
 
-impl<'a, T, D> Iterator for DijkstraIterator<'a, T, D>
+impl<'a, T> Iterator for DijkstraIterator<'a, T>
 where
     T: DijkstraDirection,
-    D: NetworkData,
 {
     type Item = (NodeId, f32);
 
@@ -58,15 +55,15 @@ where
 }
 
 pub trait DijkstraDirection {
-    fn edges<'a, D: NetworkData>(
-        network: &'a DirectedNetworkGraph<D>,
+    fn edges<'a>(
+        network: &'a DirectedNetworkGraph,
         node: NodeId,
     ) -> impl Iterator<Item = (EdgeId, &'a NetworkEdge)>;
 }
 
 impl DijkstraDirection for Forward {
-    fn edges<'a, D: NetworkData>(
-        network: &'a DirectedNetworkGraph<D>,
+    fn edges<'a>(
+        network: &'a DirectedNetworkGraph,
         node: NodeId,
     ) -> impl Iterator<Item = (EdgeId, &'a NetworkEdge)> {
         network.out_edges(node)
@@ -74,8 +71,8 @@ impl DijkstraDirection for Forward {
 }
 
 impl DijkstraDirection for Backward {
-    fn edges<'a, D: NetworkData>(
-        network: &'a DirectedNetworkGraph<D>,
+    fn edges<'a>(
+        network: &'a DirectedNetworkGraph,
         node: NodeId,
     ) -> impl Iterator<Item = (EdgeId, &'a NetworkEdge)> {
         network.in_edges(node)

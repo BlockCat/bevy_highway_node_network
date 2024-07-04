@@ -1,4 +1,4 @@
-use crate::{Backward, DirectedNetworkGraph, Forward, NetworkData, NodeId};
+use crate::{Backward, DirectedNetworkGraph, Forward, NodeId};
 use rayon::prelude::*;
 
 pub type ForwardNeighbourhood = Neighbourhood<Forward>;
@@ -22,22 +22,19 @@ where
         self.radius[node.0 as usize]
     }
 
-    pub fn from_network<D: NetworkData>(size: usize, network: &DirectedNetworkGraph<D>) -> Self {
+    pub fn from_network(size: usize, network: &DirectedNetworkGraph) -> Self {
         T::from_network(size, network)
     }
 }
 
 pub trait NeighbourhoodDirection {
-    fn find_neighbourhood_radius<D: NetworkData>(
+    fn find_neighbourhood_radius(
         node: NodeId,
         size: usize,
-        network: &DirectedNetworkGraph<D>,
+        network: &DirectedNetworkGraph,
     ) -> Option<f32>;
 
-    fn from_network<D: NetworkData>(
-        size: usize,
-        network: &DirectedNetworkGraph<D>,
-    ) -> Neighbourhood<Self>
+    fn from_network(size: usize, network: &DirectedNetworkGraph) -> Neighbourhood<Self>
     where
         Self: Sized,
     {
@@ -58,10 +55,10 @@ pub trait NeighbourhoodDirection {
 }
 
 impl NeighbourhoodDirection for Forward {
-    fn find_neighbourhood_radius<D: NetworkData>(
+    fn find_neighbourhood_radius(
         node: NodeId,
         size: usize,
-        network: &DirectedNetworkGraph<D>,
+        network: &DirectedNetworkGraph,
     ) -> Option<f32> {
         network
             .forward_iterator(node)
@@ -72,10 +69,10 @@ impl NeighbourhoodDirection for Forward {
 }
 
 impl NeighbourhoodDirection for Backward {
-    fn find_neighbourhood_radius<D: NetworkData>(
+    fn find_neighbourhood_radius(
         node: NodeId,
         size: usize,
-        network: &DirectedNetworkGraph<D>,
+        network: &DirectedNetworkGraph,
     ) -> Option<f32> {
         network
             .backward_iterator(node)

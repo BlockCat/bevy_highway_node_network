@@ -2,12 +2,10 @@ use self::iterators::EdgeIterator;
 use crate::{
     dijkstra_iterator::DijkstraIterator, Backward, EdgeId, Forward, Neighbourhood, NodeId,
 };
-pub use node_data::NetworkData;
 use serde::{Deserialize, Serialize};
 use std::ops::Neg;
 
 pub mod iterators;
-pub mod node_data;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 pub enum EdgeDirection {
@@ -86,27 +84,18 @@ impl NetworkEdge {
 /// It's an adjacency list representation of a graph.
 /// The graph is immutable.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
-pub struct DirectedNetworkGraph<D: NetworkData = ()> {
-    pub data: D,
+pub struct DirectedNetworkGraph {
     nodes: Vec<NetworkNode>,
     edges: Vec<NetworkEdge>,
 }
 
-impl<D: NetworkData> DirectedNetworkGraph<D> {
-    pub fn new(nodes: Vec<NetworkNode>, edges: Vec<NetworkEdge>, data: D) -> Self {
-        Self { data, nodes, edges }
+impl DirectedNetworkGraph {
+    pub fn new(nodes: Vec<NetworkNode>, edges: Vec<NetworkEdge>) -> Self {
+        Self { nodes, edges }
     }
 
     pub fn node(&self, node: NodeId) -> &NetworkNode {
         &self.nodes[node.0 as usize]
-    }
-
-    pub fn edge_data(&self, edge: EdgeId) -> &D::EdgeData {
-        self.data.edge_data(edge)
-    }
-
-    pub fn node_data(&self, node: NodeId) -> &D::NodeData {
-        self.data.node_data(node)
     }
 
     pub fn nodes(&self) -> &Vec<NetworkNode> {
@@ -152,11 +141,11 @@ impl<D: NetworkData> DirectedNetworkGraph<D> {
         self.create_iterator_raw(node, EdgeDirection::Backward)
     }
 
-    pub fn forward_iterator(&self, node: NodeId) -> DijkstraIterator<'_, Forward, D> {
+    pub fn forward_iterator(&self, node: NodeId) -> DijkstraIterator<'_, Forward> {
         DijkstraIterator::new(self, node)
     }
 
-    pub fn backward_iterator(&self, node: NodeId) -> DijkstraIterator<'_, Backward, D> {
+    pub fn backward_iterator(&self, node: NodeId) -> DijkstraIterator<'_, Backward> {
         DijkstraIterator::new(self, node)
     }
 

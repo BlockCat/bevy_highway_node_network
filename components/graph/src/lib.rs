@@ -99,7 +99,6 @@ impl<T> From<ShortcutState<T>> for Vec<T> {
 // #[cfg(test)]
 // pub(crate) mod tests;
 
-
 #[macro_export]
 macro_rules! create_network {
     ($s:literal..$e:literal, $($a:literal => $b:literal; $c: expr),+) => {
@@ -110,27 +109,20 @@ macro_rules! create_network {
         // use $crate::builder::DefaultEdgeBuilder;
         // use $crate::::DirectedNetworkBuilder;
         // let mut builder = DirectedNetworkBuilder::<usize, DefaultEdgeBuilder>::new();
-        let mut builder = DirectedMapGraph::<()>::new();
+        let mut builder = DirectedMapGraph::new();
 
         for x in $s..=$e {
-            builder.add_node(());
+            builder.add_node();
         }
 
         $({
             let source = NodeId($a as u32);
             let target = NodeId($b as u32);
 
-            builder.add_edge(source, target, $c, ShortcutState::Single(0), ());
+            builder.add_edge(source, target, $c);
         })+
 
         DirectedNetworkGraph::from(builder)
     }
     };
 }
-
-// Stuff we have
-// - Junction Id <- rijkswaterstaat
-// - Road Id <- rijkswaterstaat
-
-// - Node Id <- graph
-// - Edge Id <- graph

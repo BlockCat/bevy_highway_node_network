@@ -2,8 +2,7 @@ use itertools::Itertools;
 use rayon::prelude::*;
 
 use crate::{
-    DirectedNetworkGraph, EdgeDirection, EdgeId, NetworkData, NetworkEdge, NetworkNode, NodeId,
-    ShortcutState,
+    DirectedNetworkGraph, EdgeDirection, EdgeId, NetworkEdge, NetworkNode, NodeId, ShortcutState,
 };
 use std::collections::HashMap;
 
@@ -15,17 +14,15 @@ pub struct Edge {
 }
 
 #[derive(Clone, Default, Debug, PartialEq)]
-pub struct DirectedMapGraph<D: NetworkData> {
-    data: D,
+pub struct DirectedMapGraph {
     out_edges: HashMap<NodeId, Vec<Edge>>,
     in_edges: HashMap<NodeId, Vec<Edge>>,
     edge_count: usize,
 }
 
-impl<D: NetworkData> DirectedMapGraph<D> {
+impl DirectedMapGraph {
     pub fn new() -> Self {
         Self {
-            data: D::with_size(0, 0),
             ..Default::default()
         }
     }
@@ -34,30 +31,21 @@ impl<D: NetworkData> DirectedMapGraph<D> {
         self.out_edges.keys().cloned().collect()
     }
 
-    pub fn out_edges(&self, node: NodeId) -> Vec<Edge> {
+    pub fn out_edges(&self, node: NodeId) -> &Vec<Edge> {
         &self.out_edges[&node]
-
     }
 
-    pub fn add_node(&mut self, data: D::NodeData) -> NodeId {
+    pub fn add_node(&mut self) -> NodeId {
         let index = NodeId(self.out_edges.len() as u32);
         self.out_edges.insert(index, Vec::new());
         self.in_edges.insert(index, Vec::new());
-        self.data.add_node(index, data);
+
         index
     }
 
-    pub fn add_edge(
-        &mut self,
-        source: NodeId,
-        target: NodeId,
-        weight: f32,
-        road_id: ShortcutState<usize>,
-        data: D::EdgeData,
-    ) {
+    pub fn add_edge(&mut self, source: NodeId, target: NodeId, weight: f32) {
         let id = EdgeId(self.edge_count as u32);
 
-        self.data.add_edge(id, data, road_id);
         self.out_edges.get_mut(&source).unwrap().push(Edge {
             target,
             source,
@@ -72,28 +60,15 @@ impl<D: NetworkData> DirectedMapGraph<D> {
     }
 }
 
-impl<D> From<DirectedNetworkGraph<D>> for DirectedMapGraph<D>
-where
-    D: NetworkData,
-    D::NodeData: Clone,
-    D::EdgeData: Clone,
-{
-    fn from(graph: DirectedNetworkGraph<D>) -> Self {
+impl From<DirectedNetworkGraph> for DirectedMapGraph {
+    fn from(graph: DirectedNetworkGraph) -> Self {
         let mut new_graph = Self::new();
-        for (id, _) in graph.nodes().into_iter().enumerate() {
-            new_graph.add_node(graph.node_data(NodeId(id as u32)).clone());
+        for _ in 0..graph.nodes().len() {
+            new_graph.add_node();
         }
         for (id, _) in graph.nodes().into_iter().enumerate() {
-            for (edge_id, edge) in graph.out_edges(NodeId(id as u32)) {
-                let road_id = graph.data.edge_road_id(edge_id).clone();
-
-                new_graph.add_edge(
-                    NodeId(id as u32),
-                    edge.target(),
-                    edge.weight(),
-                    road_id,
-                    graph.edge_data(edge_id).clone(),
-                );
+            for (_, edge) in graph.out_edges(NodeId(id as u32)) {
+                new_graph.add_edge(NodeId(id as u32), edge.target(), edge.weight());
             }
         }
 
@@ -101,23 +76,15 @@ where
     }
 }
 
-impl<D> From<DirectedMapGraph<D>> for DirectedNetworkGraph<D>
-where
-    D: NetworkData,
-    D::NodeData: Clone,
-    D::EdgeData: Clone,
-{
-    fn from(mut value: DirectedMapGraph<D>) -> Self {
-        let mut data = D::with_size(value.out_edges.len(), value.edge_count);
-
+impl From<DirectedMapGraph> for DirectedNetworkGraph {
+    fn from(mut value: DirectedMapGraph) -> Self {
         let mut nodes = Vec::with_capacity(value.out_edges.len());
         let mut edges = Vec::with_capacity(value.edge_count);
 
         for node_id in (0..value.out_edges.len()).map(|i| NodeId(i as u32)) {
             let out_edges = value.out_edges.remove(&node_id).unwrap();
             let in_edges = value.in_edges.remove(&node_id).unwrap();
-            let node_data = value.data.node_data(node_id);
-            data.add_node(node_id, node_data.clone());
+
             let start_edge_index = edges.len() as u32;
 
             let (out_edges, overlaping_edges, in_edges) = collect_edges(in_edges, out_edges);
@@ -146,7 +113,7 @@ where
             nodes.push(NetworkNode::new(start_edge_index, last_edge_index));
         }
 
-        DirectedNetworkGraph::new(nodes, edges, data)
+        DirectedNetworkGraph::new(nodes, edges)
     }
 }
 
@@ -197,16 +164,13 @@ where
 }
 
 pub trait EdgeBuilder {
-    type GraphData: NetworkData<NodeData = ()>;
-
     fn source(&self) -> NodeId;
     fn target(&self) -> NodeId;
     fn weight(&self) -> f32;
     fn road_id(&self) -> ShortcutState<usize>;
-    fn edge_data(&self) -> <Self::GraphData as NetworkData>::EdgeData;
 }
 
-impl<E> From<Vec<E>> for DirectedMapGraph<E::GraphData>
+impl<E> From<Vec<E>> for DirectedMapGraph
 where
     E: EdgeBuilder,
 {
@@ -221,7 +185,7 @@ where
 
         let convert = nodes
             .into_iter()
-            .map(|n| (n, graph.add_node(())))
+            .map(|n| (n, graph.add_node()))
             .collect::<HashMap<_, _>>();
 
         for edge in edges {
@@ -229,8 +193,6 @@ where
                 convert[&edge.source()],
                 convert[&edge.target()],
                 edge.weight(),
-                edge.road_id(),
-                edge.edge_data(),
             );
         }
 
@@ -238,7 +200,7 @@ where
     }
 }
 
-impl<E> FromIterator<E> for DirectedMapGraph<E::GraphData>
+impl<E> FromIterator<E> for DirectedMapGraph
 where
     E: EdgeBuilder,
 {
@@ -248,7 +210,7 @@ where
     }
 }
 
-impl<E> FromParallelIterator<E> for DirectedMapGraph<E::GraphData>
+impl<E> FromParallelIterator<E> for DirectedMapGraph
 where
     E: EdgeBuilder + Send + Sync,
 {
@@ -264,30 +226,22 @@ where
 #[cfg(test)]
 mod tests {
 
-    use itertools::Itertools;
-
     use super::*;
 
-    fn build_graph() -> DirectedMapGraph<()> {
+    fn build_graph() -> DirectedMapGraph {
         let mut graph = DirectedMapGraph::new();
 
         for _ in 0..5 {
-            graph.add_node(());
+            graph.add_node();
         }
 
-        graph.add_edge(NodeId(0), NodeId(1), 1.0, ShortcutState::Single(0), ());
-        graph.add_edge(NodeId(0), NodeId(2), 2.0, ShortcutState::Single(1), ());
-        graph.add_edge(NodeId(0), NodeId(3), 3.0, ShortcutState::Single(2), ());
-        graph.add_edge(NodeId(1), NodeId(4), 3.0, ShortcutState::Single(3), ());
-        graph.add_edge(NodeId(2), NodeId(4), 4.0, ShortcutState::Single(4), ());
-        graph.add_edge(
-            NodeId(4),
-            NodeId(3),
-            4.0,
-            ShortcutState::Shortcut(vec![5, 6]),
-            (),
-        );
-        graph.add_edge(NodeId(4), NodeId(1), 3.0, ShortcutState::Single(3), ());
+        graph.add_edge(NodeId(0), NodeId(1), 1.0);
+        graph.add_edge(NodeId(0), NodeId(2), 2.0);
+        graph.add_edge(NodeId(0), NodeId(3), 3.0);
+        graph.add_edge(NodeId(1), NodeId(4), 3.0);
+        graph.add_edge(NodeId(2), NodeId(4), 4.0);
+        graph.add_edge(NodeId(4), NodeId(3), 4.0);
+        graph.add_edge(NodeId(4), NodeId(1), 3.0);
 
         graph
     }
@@ -313,7 +267,7 @@ mod tests {
     fn test_directed_map_graph_conversion() {
         let graph = build_graph();
         // println!("{:?}", graph);
-        let network_graph: DirectedNetworkGraph<()> = graph.clone().into();
+        let network_graph: DirectedNetworkGraph = graph.clone().into();
 
         let out_edges = [
             network_graph.out_edges(NodeId(0)).collect::<Vec<_>>(),
@@ -390,8 +344,8 @@ mod tests {
     fn test_directed_map_graph_conversion_and_back() {
         let graph = build_graph();
         // println!("{:?}", graph);
-        let network_graph: DirectedNetworkGraph<()> = graph.clone().into();
-        let back_graph: DirectedMapGraph<()> = network_graph.into();
+        let network_graph: DirectedNetworkGraph = graph.clone().into();
+        let back_graph: DirectedMapGraph = network_graph.into();
 
         assert_eq!(graph, back_graph);
     }
