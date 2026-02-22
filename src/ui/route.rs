@@ -5,6 +5,7 @@ use crate::world::WorldEntitySelectionType;
 use bevy::prelude::*;
 use bevy::tasks::AsyncComputeTaskPool;
 use bevy::tasks::Task;
+use bevy_egui::EguiPrimaryContextPass;
 use bevy_egui::{egui, EguiContexts};
 use bevy_shapefile::RoadMap;
 use futures_lite::future;
@@ -19,7 +20,7 @@ pub struct RouteUIPlugin;
 impl Plugin for RouteUIPlugin {
     fn build(&self, app: &mut App) {
         app.insert_resource(NodeSelectionState::default())
-            .add_systems(Update, gui_system)
+            .add_systems(EguiPrimaryContextPass, gui_system)
             .add_systems(Update, waiting_for_task)
             .add_systems(Update, route_draw);
     }
@@ -39,10 +40,10 @@ pub fn gui_system(
     road_map: Res<RoadMap>,
     mut egui_context: EguiContexts,
     mut state: ResMut<NodeSelectionState>,
-    mut commands: Commands,
+    
     mut event_reader: MessageReader<PointClickedEvent>,
-) {
-    egui::Window::new("Routing").show(egui_context.ctx_mut().unwrap(), |ui| {
+)  -> Result {
+    egui::Window::new("Routing").show(egui_context.ctx_mut()?, |ui| {
         ui.label("Routing");
 
         if ui.button("Start route").clicked() {
@@ -87,6 +88,7 @@ pub fn gui_system(
         ui.label(n1);
         ui.label(n2);
     });
+    Ok(())
 }
 
 fn waiting_for_task(mut route_state: ResMut<NodeSelectionState>) {

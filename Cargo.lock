@@ -687,6 +687,7 @@ dependencies = [
 name = "bevy_dutch_road_highway_node_network"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
  "bevy",
  "bevy_egui",
  "bevy_polyline",
@@ -1402,6 +1403,7 @@ dependencies = [
 name = "bevy_shapefile"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
  "bevy",
  "bincode",
  "rayon",
@@ -2367,15 +2369,6 @@ checksum = "4b2ee10366b9a0956358110073ea66ab06d77169ee9955d32c9ba7b7b8d4e1c3"
 dependencies = [
  "byteorder",
  "time",
-]
-
-[[package]]
-name = "dbf_to_sql"
-version = "0.1.0"
-dependencies = [
- "rayon",
- "rusqlite",
- "shapefile",
 ]
 
 [[package]]

@@ -20,42 +20,54 @@ pub struct RoadSection {
 impl FromSql for RoadSection {
     fn column_result(value: rusqlite::types::ValueRef<'_>) -> rusqlite::types::FromSqlResult<Self> {
         let mut blob = value.as_blob()?.iter();
-        let _ = blob.by_ref().take(1);
-        let is_big_endian = match blob.next().unwrap() {
-            0 => false,
-            1 => true,
-            _ => return Err(rusqlite::types::FromSqlError::InvalidType),
-        };
-        let _ = blob.by_ref().take(4);
 
-        let minx = read_f64(blob.by_ref(), is_big_endian)?;
-        let miny = read_f64(blob.by_ref(), is_big_endian)?;
-        let maxx = read_f64(blob.by_ref(), is_big_endian)?;
-        let maxy = read_f64(blob.by_ref(), is_big_endian)?;
+        let mut magic = [0u8; 2];
+        blob.by_ref()
+            .take(2)
+            .enumerate()
+            .for_each(|(i, byte)| magic[i] = *byte);
+        if magic != [0x47, 0x50] {
+            println!("Invalid magic number: {:?}", magic);
+            return Err(rusqlite::types::FromSqlError::InvalidType);
+        }
+        let _version = blob
+            .next()
+            .ok_or(rusqlite::types::FromSqlError::InvalidType)?;
+        let flags = blob
+            .next()
+            .ok_or(rusqlite::types::FromSqlError::InvalidType)?;
 
-        let metadata_end_byte = *blob.next().unwrap();
-
-        if metadata_end_byte != 0x7C {
+        let is_big_endian = flags & 0b0000_0001 == 0;
+        let envelop_content = (flags >> 1) & 0b0000_0111;
+        if envelop_content != 1 {
+            println!("Unsupported envelope content: {}", envelop_content);
             return Err(rusqlite::types::FromSqlError::InvalidType);
         }
 
-        let class_type = read_u32(blob.by_ref(), is_big_endian)?;
-        if class_type != 2 {
+        let _srs_id = read_u32(&mut blob, false)?;
+
+        let minx = read_f64(&mut blob, is_big_endian)?;
+        let maxx = read_f64(&mut blob, is_big_endian)?;
+        let miny = read_f64(&mut blob, is_big_endian)?;
+        let maxy = read_f64(&mut blob, is_big_endian)?;
+
+        let is_big_endian = *blob
+            .next()
+            .ok_or(rusqlite::types::FromSqlError::InvalidType)?
+            == 0;
+        let wkb_type = read_u32(&mut blob, is_big_endian)?;
+        if wkb_type != 2 {
+            println!("Unsupported WKB type: {}", wkb_type);
             return Err(rusqlite::types::FromSqlError::InvalidType);
         }
 
-        let point_count = read_u32(blob.by_ref(), is_big_endian)?;
-        let mut points = Vec::with_capacity(point_count as usize);
+        let num_points = read_u32(&mut blob, is_big_endian)?;
+        let mut points = Vec::with_capacity(num_points as usize);
 
-        for _ in 0..point_count {
-            let x = read_f64(blob.by_ref(), is_big_endian)?;
-            let y = read_f64(blob.by_ref(), is_big_endian)?;
-            points.push(Vec2::new(x as f32, y as f32));
-        }
-
-        let end_byte = *blob.next().unwrap();
-        if end_byte != 0xFE {
-            return Err(rusqlite::types::FromSqlError::InvalidType);
+        for _ in 0..num_points {
+            let x = read_f64(&mut blob, is_big_endian)? as f32;
+            let y = read_f64(&mut blob, is_big_endian)? as f32;
+            points.push(Vec2::new(x, y));
         }
 
         Ok(RoadSection {

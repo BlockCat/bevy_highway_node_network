@@ -35,9 +35,9 @@ pub fn gui_system(
     mut state: ResMut<LayerState>,
     preprocess: Option<Res<PreProcess>>,
     base_network: Res<DirectedNetworkGraphContainer>,
-) {
+) -> Result {
     
-    egui::Window::new("Preprocessing").show(egui_context.ctx_mut().unwrap(), |ui| {
+    egui::Window::new("Preprocessing").show(egui_context.ctx_mut()?, |ui| {
         ui.label("Preprocess");
         ui.add(egui::Slider::new(&mut state.preprocess_layers, 1..=20).text("Layers"));
         ui.add(egui::Slider::new(&mut state.neighbourhood_size, 1..=90).text("Neighbourhood size"));
@@ -67,6 +67,7 @@ pub fn gui_system(
             }
         }
     });
+    Ok(())
 }
 
 fn load_or_calculate<P: AsRef<Path>, F>(

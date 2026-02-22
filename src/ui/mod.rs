@@ -3,7 +3,7 @@ use crate::{
     world::{WorldEntity, WorldEntitySelectionType},
 };
 use bevy::{prelude::*, window::PrimaryWindow};
-use bevy_egui::EguiPlugin;
+use bevy_egui::{EguiPlugin, EguiPrimaryContextPass};
 use bevy_shapefile::RoadMap;
 use graph::{DirectedNetworkGraph, NodeId};
 pub use layers::PreProcess;
@@ -52,7 +52,7 @@ impl Plugin for HighwayUiPlugin {
             })
             .add_systems(Update, layers::colouring_system)
             .add_systems(Update, layers::handle_preprocess_task)
-            .add_systems(Update, layers::gui_system)
+            .add_systems(EguiPrimaryContextPass, layers::gui_system)
             .add_systems(Update, mouse_point_system);
     }
 }
@@ -76,10 +76,14 @@ fn mouse_point_system(
                 let world = crate::world::convert(position, transform, camera);
                 let junction = road_map.nearest_junction(world.x, world.y).unwrap();
 
-                let node_id = (0..network.nodes().len())
+                let node_id = if let Some(node_id) = (0..network.nodes().len())
                     .map(NodeId::from)
                     .find(|x| network.node_data(*x).0 == junction)
-                    .unwrap();
+                {
+                    node_id
+                } else {
+                    return;
+                };
 
                 let out_edges = network
                     .out_edges(node_id)

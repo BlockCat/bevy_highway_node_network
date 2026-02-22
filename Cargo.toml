@@ -21,6 +21,7 @@ zstd = { workspace = true }
 
 futures-lite = { workspace = true }
 rayon = { workspace = true }
+anyhow = {workspace = true}
 
 [dev-dependencies]
 criterion = { workspace = true }
@@ -39,8 +40,7 @@ opt-level = 3
 members = [
     "components/bevy_shapefile",
     "components/graph",
-    "components/highway",
-    "tools/dbf_to_sql",
+    "components/highway"
 ]
 
 [workspace.dependencies]
@@ -67,3 +67,6 @@ itertools = "0.14.0"
 
 shapefile = "0.7.0"
 rstar = "0.12.2"
+
+
+anyhow = "1.0.71"

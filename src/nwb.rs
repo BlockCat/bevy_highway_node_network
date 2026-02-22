@@ -185,7 +185,7 @@ pub fn preprocess_roadmap<P: AsRef<Path>>(
             target,
             direction: rij_richting.0,
             distance,
-            sql_id: road_id,
+            sql_id: *road_id,
         });
     }
 

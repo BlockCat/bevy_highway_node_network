@@ -30,7 +30,7 @@ pub struct LoadedMaterials {
 
 #[derive(Debug, Clone, Resource)]
 pub struct WorldConfig {
-    // pub road_map_path: String,
+    pub road_map_path: String,
     pub geopackage_path: String,
     pub directed_graph_path: String,
 
@@ -175,7 +175,17 @@ fn init_road_map(config: Res<WorldConfig>, mut commands: Commands) {
 }
 
 fn load_road_map(config: &Res<WorldConfig>) -> RoadMap {
-    RoadMap::new(&config.geopackage_path)
+    if let Ok(road_map) = crate::read_file(&config.road_map_path) {
+        road_map
+    } else {
+        println!("File {:?} not found, creating...", config.road_map_path);
+        let road_map =
+            RoadMap::from_geopackage(&config.geopackage_path).expect("Could not load road map");
+
+        crate::write_file(&road_map, &config.road_map_path).expect("Could not write road_map");
+
+        road_map
+    }
 }
 
 fn load_graph(
@@ -248,7 +258,7 @@ fn visible_entities(
 
         for id in added {
             let section = road_map.get_section(&id).unwrap();
-            let entity = spawn_figure(&mut commands, id, &section, &mut polylines, &materials);
+            let entity = spawn_figure(&mut commands, id, section, &mut polylines, &materials);
 
             tracker.track(id, entity);
         }
