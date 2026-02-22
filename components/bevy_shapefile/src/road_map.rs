@@ -3,9 +3,8 @@ use crate::{
     JunctionId, RoadId, ShapeError,
 };
 use bevy::{
-    math::{Vec2, Vec3},
+    math::{bounding::Aabb2d, Vec2},
     prelude::Resource,
-    render::primitives::Aabb,
 };
 use rayon::prelude::*;
 use rstar::{RStarInsertionStrategy, RTree, RTreeParams};
@@ -52,7 +51,8 @@ impl RTreeParams for Params {
 impl RoadMap {
     pub fn write<P: AsRef<Path>>(&self, path: P) {
         let file = File::create(path).expect("Could not create file");
-        bincode::serialize_into(file, self).expect("Could not write");
+        bincode::serialize_into(file, self).expect("Could not write");        
+        
     }
 
     pub fn read<P: AsRef<Path>>(path: P) -> Self {
@@ -159,9 +159,9 @@ fn load_road_sections(
                 .collect::<Vec<_>>();
 
             let bbox = line.bbox();
-            let aabb = Aabb::from_min_max(
-                Vec3::new(bbox.x_range()[0] as f32, bbox.y_range()[0] as f32, 0.0),
-                Vec3::new(bbox.x_range()[1] as f32, bbox.y_range()[1] as f32, 0.0),
+            let aabb = Aabb2d::new(
+                Vec2::new(bbox.x_range()[0] as f32, bbox.y_range()[0] as f32),
+                Vec2::new(bbox.x_range()[1] as f32, bbox.y_range()[1] as f32),
             );
             let id = RoadId::from(id);
 

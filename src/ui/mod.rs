@@ -5,8 +5,8 @@ use crate::{
 use bevy::{prelude::*, window::PrimaryWindow};
 use bevy_egui::EguiPlugin;
 use bevy_shapefile::RoadMap;
-pub use layers::PreProcess;
 use graph::{DirectedNetworkGraph, NodeId};
+pub use layers::PreProcess;
 use std::{
     collections::HashSet,
     ops::{Deref, DerefMut},
@@ -14,8 +14,8 @@ use std::{
 
 use self::{filter::FilterUIPlugin, layers::LayerState, route::RouteUIPlugin};
 
-mod layers;
 mod filter;
+mod layers;
 mod route;
 
 pub struct HighwayUiPlugin;
@@ -38,10 +38,10 @@ impl DerefMut for DirectedNetworkGraphContainer {
 
 impl Plugin for HighwayUiPlugin {
     fn build(&self, app: &mut bevy::prelude::App) {
-        app.add_plugins(EguiPlugin)
+        app.add_plugins(EguiPlugin::default())
             .add_plugins(RouteUIPlugin)
             .add_plugins(FilterUIPlugin)
-            .add_event::<PointClickedEvent>()
+            .add_message::<PointClickedEvent>()
             .insert_resource(LayerState {
                 preprocess_layers: 6,
                 neighbourhood_size: 30,
@@ -62,13 +62,12 @@ fn mouse_point_system(
     network: Res<DirectedNetworkGraphContainer>,
     road_map: Res<RoadMap>,
     camera_q: Query<(&GlobalTransform, &Camera)>,
-
-    mut event_writer: EventWriter<PointClickedEvent>,
+    mut event_writer: MessageWriter<PointClickedEvent>,
     buttons: Res<ButtonInput<MouseButton>>,
     mut query: Query<&mut WorldEntity>,
 ) {
-    if let Ok(window) = windows.get_single() {
-        if let Ok((transform, camera)) = camera_q.get_single() {
+    if let Ok(window) = windows.single() {
+        if let Ok((transform, camera)) = camera_q.single() {
             if let Some(position) = window.cursor_position() {
                 let position = Vec2::new(
                     2.0 * position.x / window.width() - 1.0,
@@ -105,12 +104,12 @@ fn mouse_point_system(
                 });
 
                 if buttons.just_released(MouseButton::Left) {
-                    event_writer.send(PointClickedEvent(node_id));
+                    event_writer.write(PointClickedEvent(node_id));
                 }
             }
         }
     }
 }
 
-#[derive(Debug, Clone, Event)]
+#[derive(Debug, Clone, Message)]
 pub struct PointClickedEvent(pub NodeId);

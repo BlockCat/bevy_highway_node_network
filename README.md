@@ -4,7 +4,7 @@
 
 ## Install:
 
-1. Retrieve latest data from https://www.rijkswaterstaat.nl/apps/geoservices/geodata/dmc/nwb-wegen/geogegevens/shapefile/Nederland_totaal/
+1. Retrieve latest data from https://www.rijkswaterstaat.nl/apps/geoservices/geodata/dmc/nwb-wegen/geogegevens/shapefile/Nederland_totaal/ of https://downloads.rijkswaterstaatdata.nl/nwb-wegen/geogegevens/geopackage/Nederland_totaal/
 2. Extract contents to /data folder.
 3. Create a database using the tools/dbf_to_sql tool. (`cargo.exe run --package dbf_to_sql --bin dbf_to_sql --release`)
 

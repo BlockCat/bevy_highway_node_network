@@ -15,8 +15,8 @@ fn main() {
         .transaction()
         .expect("Could not start transaction");
 
-    let j1 = thread::spawn(|| read_wegvakken("data/01-05-2024/Wegvakken/Wegvakken.shp"));
-    let j2 = thread::spawn(|| read_snelheidslimieten("data/01-05-2024/Snelheden.shp"));
+    let j1 = thread::spawn(|| read_wegvakken("data/01-02-2026/Wegvakken/Wegvakken.shp"));
+    let j2 = thread::spawn(|| read_snelheidslimieten("data/01-02-2026/Snelheden.shp"));
     let snelheidslimieten = j2.join().unwrap();
     let mut wegvakken = j1.join().unwrap();
 

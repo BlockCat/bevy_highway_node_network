@@ -4,7 +4,7 @@ use crate::{
     ui::{DirectedNetworkGraphContainer, PreProcess},
 };
 use bevy::prelude::*;
-use bevy_polyline::prelude::{Polyline, PolylineBundle, PolylineMaterial};
+use bevy_polyline::prelude::{Polyline, PolylineBundle, PolylineHandle, PolylineMaterial, PolylineMaterialHandle};
 use bevy_shapefile::{RoadId, RoadMap, RoadSection, AABB};
 use graph::DirectedNetworkGraph;
 use std::{
@@ -88,32 +88,47 @@ fn init_materials(
 ) {
     let normal_material = polyline_materials.add(PolylineMaterial {
         width: 1.0,
-        color: config.normal_colour,
+        color: config.normal_colour.to_linear(),
         perspective: true,
         ..Default::default()
     });
     let selected_material = polyline_materials.add(PolylineMaterial {
         width: 3.0,
-        color: config.selected_colour,
+        color: config.selected_colour.to_linear(),
         ..Default::default()
     });
 
     let incoming_material = polyline_materials.add(PolylineMaterial {
         width: 3.0,
-        color: Color::RED,
+        color: LinearRgba {
+            red: 1.0,
+            green: 0.0,
+            blue: 0.0,
+            alpha: 1.0,
+        },
 
         ..Default::default()
     });
 
     let outgoing_material = polyline_materials.add(PolylineMaterial {
         width: 3.0,
-        color: Color::YELLOW,
+        color: LinearRgba {
+            red: 1.0,
+            green: 1.0,
+            blue: 0.0,
+            alpha: 1.0,
+        },
         ..Default::default()
     });
 
     let route_material = polyline_materials.add(PolylineMaterial {
         width: 9.0,
-        color: Color::PINK,
+        color: LinearRgba {
+            red: 1.0,
+            green: 0.0,
+            blue: 1.0,
+            alpha: 1.0,
+        },
         ..Default::default()
     });
     commands.insert_resource(LoadedMaterials {
@@ -196,7 +211,7 @@ fn mark_on_changed_preprocess(
     mut q_camera: Query<(&Camera, &GlobalTransform, &mut Transform), (With<MainCamera>,)>,
 ) {
     if let Some(preprocess) = preprocess {
-        if preprocess.is_added() && q_camera.get_single_mut().is_ok() {
+        if preprocess.is_added() && q_camera.single_mut().is_ok() {
             tracker.map.clear();
         }
     }
@@ -216,7 +231,7 @@ fn visible_entities(
         ),
     >,
 ) {
-    if let Ok((camera, transform)) = q_camera.get_single() {
+    if let Ok((camera, transform)) = q_camera.single() {
         let min = convert(Vec2::new(-1.0, -1.0), transform, camera);
         let max = convert(Vec2::new(1.0, 1.0), transform, camera);
 
@@ -256,22 +271,18 @@ fn visible_entities(
 
 fn colour_system(
     loaded_materials: Res<LoadedMaterials>,
-    mut query: Query<(&mut WorldEntity, &mut Handle<PolylineMaterial>)>,
+    mut query: Query<(&mut WorldEntity, &mut PolylineMaterialHandle)>,
 ) {
     query.par_iter_mut().for_each(|(mut we, mut mode)| {
         let material = match we.selected {
-            WorldEntitySelectionType::NotSelected => loaded_materials.normal_material.clone_weak(),
-            WorldEntitySelectionType::BaseSelected => {
-                loaded_materials.selected_material.clone_weak()
-            }
-            WorldEntitySelectionType::BiDirection => {
-                loaded_materials.selected_material.clone_weak()
-            }
-            WorldEntitySelectionType::Outgoing => loaded_materials.outgoing_material.clone_weak(),
-            WorldEntitySelectionType::Incoming => loaded_materials.incoming_material.clone_weak(),
-            WorldEntitySelectionType::Route => loaded_materials.route_material.clone_weak(),
+            WorldEntitySelectionType::NotSelected => loaded_materials.normal_material.clone(),
+            WorldEntitySelectionType::BaseSelected => loaded_materials.selected_material.clone(),
+            WorldEntitySelectionType::BiDirection => loaded_materials.selected_material.clone(),
+            WorldEntitySelectionType::Outgoing => loaded_materials.outgoing_material.clone(),
+            WorldEntitySelectionType::Incoming => loaded_materials.incoming_material.clone(),
+            WorldEntitySelectionType::Route => loaded_materials.route_material.clone(),
         };
-        *mode = material;
+        *mode = PolylineMaterialHandle(material);
         we.selected = WorldEntitySelectionType::NotSelected;
     });
 }
@@ -292,14 +303,16 @@ fn spawn_figure(
 ) -> Entity {
     commands
         .spawn(PolylineBundle {
-            polyline: polylines.add(Polyline {
-                vertices: section
-                    .points
-                    .iter()
-                    .map(|c| Vec3::new(c.x, c.y, 0.0))
-                    .collect(),
-            }),
-            material: materials.normal_material.clone_weak(),
+            polyline: PolylineHandle(
+                polylines.add(Polyline {
+                    vertices: section
+                        .points
+                        .iter()
+                        .map(|c| Vec3::new(c.x, c.y, 0.0))
+                        .collect(),
+                }),
+            ),
+            material: PolylineMaterialHandle(materials.normal_material.clone()),
             ..Default::default()
         })
         .insert(WorldEntity {

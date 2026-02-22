@@ -39,13 +39,15 @@ pub fn gui_system(
     road_map: Res<RoadMap>,
     mut egui_context: EguiContexts,
     mut state: ResMut<NodeSelectionState>,
-    mut event_reader: EventReader<PointClickedEvent>,
+    mut commands: Commands,
+    mut event_reader: MessageReader<PointClickedEvent>,
 ) {
-    egui::Window::new("Routing").show(egui_context.ctx_mut(), |ui| {
+    egui::Window::new("Routing").show(egui_context.ctx_mut().unwrap(), |ui| {
         ui.label("Routing");
 
         if ui.button("Start route").clicked() {
             *state = NodeSelectionState::FindingNode1;
+            
             event_reader.clear();
         } else {
             match (state.as_ref(), event_reader.read().next()) {

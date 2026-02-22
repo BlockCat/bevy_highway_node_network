@@ -13,8 +13,8 @@ use bevy_polyline::PolylinePlugin;
 
 fn main() {
     App::new()
-        .insert_resource(ClearColor(Color::rgb(0.0, 0.0, 0.2)))
-        .insert_resource(Msaa::Sample4)
+        .insert_resource(ClearColor(Color::linear_rgb(0.0, 0.0, 0.2)))
+        // .insert_resource(Msaa::Sample4)
         .add_plugins(DefaultPlugins)
         .add_plugins(HighwayUiPlugin)
         .add_plugins(PolylinePlugin)
@@ -27,7 +27,7 @@ fn main() {
                 road_map_path: "data/road_map.data".into(),
                 directed_graph_path: "data/directed_graph.graph".into(),
 
-                selected_colour: Color::GREEN,
+                selected_colour: Color::linear_rgb(0.0, 1.0, 0.0),
                 normal_colour: Color::WHITE,
             },
         })

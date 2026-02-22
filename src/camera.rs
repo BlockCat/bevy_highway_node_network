@@ -39,17 +39,26 @@ fn load_camera(mut commands: Commands) {
     let utrecht = Vec2::from(utrecht);
 
     commands
-        .spawn(Camera3dBundle {
-            transform: Transform::from_translation(utrecht.extend(10.0))
+        .spawn(Camera3d::default())
+        .insert(
+            Transform::from_translation(utrecht.extend(10.0))
                 .looking_at(utrecht.extend(0.0), Vec3::Y),
-            projection: Projection::Orthographic(Default::default()),
-            camera: Camera {
-                hdr: true,
-                ..default()
-            },
-            ..default()
-        })
+        )
+        .insert(Projection::Orthographic(
+            OrthographicProjection::default_3d(),
+        ))
         .insert(MainCamera);
+    // commands
+    //     .spawn(Camera3d {
+    //         transform: ,
+    //         projection: Projection::Orthographic(Default::default()),
+    //         camera: Camera {
+    //             hdr: true,
+    //             ..default()
+    //         },
+    //         ..default()
+    //     })
+    //     .insert(MainCamera);
 }
 
 fn camera_system_zoom(
@@ -70,9 +79,10 @@ fn camera_system_zoom(
     }
 
     if zoomed {
-        let mut projection = q_camera.single_mut();
+        let mut projection = q_camera.single_mut().unwrap();
         match projection.as_mut() {
             Projection::Perspective(_) => todo!(),
+            Projection::Custom(_) => todo!(),
             Projection::Orthographic(projection) => {
                 projection.scale *= factor;
                 println!("Zoomed: {}", projection.scale);
@@ -107,13 +117,13 @@ fn camera_system_move(
     }
 
     if moved {
-        let (projection, mut transform) = q_camera.single_mut();
+        let (projection, mut transform) = q_camera.single_mut().unwrap();
 
         match projection {
             Projection::Orthographic(projection) => {
                 transform.translation += translation * projection.scale;
             }
-            Projection::Perspective(_) => todo!(),
+            _ => todo!(),
         }
 
         println!("Moved: {:?}", transform.translation);

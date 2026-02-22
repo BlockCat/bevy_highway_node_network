@@ -36,7 +36,8 @@ pub fn gui_system(
     preprocess: Option<Res<PreProcess>>,
     base_network: Res<DirectedNetworkGraphContainer>,
 ) {
-    egui::Window::new("Preprocessing").show(egui_context.ctx_mut(), |ui| {
+    
+    egui::Window::new("Preprocessing").show(egui_context.ctx_mut().unwrap(), |ui| {
         ui.label("Preprocess");
         ui.add(egui::Slider::new(&mut state.preprocess_layers, 1..=20).text("Layers"));
         ui.add(egui::Slider::new(&mut state.neighbourhood_size, 1..=90).text("Neighbourhood size"));
@@ -90,7 +91,8 @@ pub fn handle_preprocess_task(
     mut state: ResMut<LayerState>,
     mut query: Query<(Entity, &mut ComputeTask<PreProcess>)>,
 ) {
-    if let Ok((entity, mut task)) = query.get_single_mut() {
+    
+    if let Ok((entity, mut task)) = query.single_mut() {
         if let Some(preprocess) = future::block_on(future::poll_once(&mut task.0)) {
             state.processing = false;
 

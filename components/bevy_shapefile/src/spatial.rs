@@ -1,7 +1,4 @@
-use bevy::{
-    math::{Vec2, Vec3},
-    render::primitives::Aabb,
-};
+use bevy::math::{Vec2, Vec3, bounding::Aabb2d};
 use rstar::{PointDistance, RTreeObject, AABB};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
@@ -16,7 +13,7 @@ pub struct RoadSection {
         serialize_with = "serialize_aabb",
         deserialize_with = "deserialize_aabb"
     )]
-    pub aabb: Aabb,
+    pub aabb: Aabb2d,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -50,34 +47,34 @@ pub struct RoadSpatialIndex {
         serialize_with = "serialize_aabb",
         deserialize_with = "deserialize_aabb"
     )]
-    pub aabb: Aabb,
+    pub aabb: Aabb2d,
 }
 
 impl RTreeObject for RoadSpatialIndex {
     type Envelope = rstar::AABB<[f32; 2]>;
 
     fn envelope(&self) -> Self::Envelope {
-        let min = self.aabb.min();
-        let max = self.aabb.max();
+        let min = self.aabb.min;
+        let max = self.aabb.max;
         rstar::AABB::from_corners([min.x, min.y], [max.x, max.y])
     }
 }
 
-fn deserialize_aabb<'de, D>(deserializer: D) -> Result<Aabb, D::Error>
+fn deserialize_aabb<'de, D>(deserializer: D) -> Result<Aabb2d, D::Error>
 where
     D: Deserializer<'de>,
 {
-    let (min, max): (Vec3, Vec3) = Deserialize::deserialize(deserializer)?;
+    let (min, max): (Vec2, Vec2) = Deserialize::deserialize(deserializer)?;
 
-    Ok(Aabb::from_min_max(min, max))
+    Ok(Aabb2d::new(min, max))
 }
 
-fn serialize_aabb<S>(aabb: &Aabb, serializer: S) -> Result<S::Ok, S::Error>
+fn serialize_aabb<S>(aabb: &Aabb2d, serializer: S) -> Result<S::Ok, S::Error>
 where
     S: Serializer,
 {
-    let min = aabb.min();
-    let max = aabb.max();
+    let min = aabb.min;
+    let max = aabb.max;
 
     (min, max).serialize(serializer)
 }
@@ -117,19 +114,19 @@ mod tests {
     fn test_road_spatial_index() {
         let road = RoadSpatialIndex {
             id: RoadId(0),
-            aabb: Aabb::from_min_max(Vec3::new(0.0, 0.0, 0.0), Vec3::new(1.0, 1.0, 1.0)),
+            aabb: Aabb2d::new(Vec2::new(0.0, 0.0), Vec2::new(1.0, 1.0)),
         }
         .envelope();
 
         let road2 = RoadSpatialIndex {
             id: RoadId(1),
-            aabb: Aabb::from_min_max(Vec3::new(1.0, 1.0, 1.0), Vec3::new(2.0, 2.0, 2.0)),
+            aabb: Aabb2d::new(Vec2::new(1.0, 1.0), Vec2::new(2.0, 2.0)),
         }
         .envelope();
 
         let road3 = RoadSpatialIndex {
             id: RoadId(2),
-            aabb: Aabb::from_min_max(Vec3::new(2.0, 2.0, 2.0), Vec3::new(3.0, 3.0, 3.0)),
+            aabb: Aabb2d::new(Vec2::new(2.0, 2.0), Vec2::new(3.0, 3.0)),
         }
         .envelope();
 
@@ -143,7 +140,7 @@ mod tests {
         let road_section = RoadSection {
             id: RoadId(0),
             points: vec![Vec2::new(0.0, 0.0), Vec2::new(1.0, 1.0)],
-            aabb: Aabb::from_min_max(Vec3::new(0.0, 0.0, 0.0), Vec3::new(1.0, 1.0, 1.0)),
+            aabb: Aabb2d::new(Vec2::new(0.0, 0.0), Vec2::new(1.0, 1.0)),
         };
 
         let serialized = serde_json::to_string(&road_section).unwrap();
@@ -167,7 +164,7 @@ mod tests {
         );
         assert_eq!(
             road_section.aabb,
-            Aabb::from_min_max(Vec3::new(0.0, 0.0, 0.0), Vec3::new(1.0, 1.0, 1.0))
+            Aabb2d::new(Vec2::new(0.0, 0.0), Vec2::new(1.0, 1.0))
         );
     }
 }
