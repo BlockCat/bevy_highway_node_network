@@ -6,14 +6,15 @@ version = "0.1.0"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-bevy = {workspace = true, features = []}
+bevy = { workspace = true, features = [] }
 
 bincode = { workspace = true }
 rayon = { workspace = true }
-rstar = {workspace = true, features = ["serde"]}
+rstar = { workspace = true, features = ["serde"] }
 serde = { workspace = true }
-shapefile = {workspace = true}
+shapefile = { workspace = true }
+rusqlite = { workspace = true }
 
 # test dependencies
 [dev-dependencies]
-serde_json = {workspace = true}
+serde_json = { workspace = true }

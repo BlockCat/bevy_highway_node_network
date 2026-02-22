@@ -74,14 +74,11 @@ fn mouse_point_system(
                     -(2.0 * position.y / window.height() - 1.0),
                 );
                 let world = crate::world::convert(position, transform, camera);
-                let node = road_map
-                    .junction_spatial
-                    .nearest_neighbor(&[world.x, world.y])
-                    .unwrap();
+                let junction = road_map.nearest_junction(world.x, world.y).unwrap();
 
                 let node_id = (0..network.nodes().len())
                     .map(NodeId::from)
-                    .find(|x| network.node_data(*x).0 == node.junction_id)
+                    .find(|x| network.node_data(*x).0 == junction)
                     .unwrap();
 
                 let out_edges = network

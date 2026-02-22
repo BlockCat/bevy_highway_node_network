@@ -22,9 +22,10 @@ fn main() {
         // .add_plugins(FrameTimeDiagnosticsPlugin::default())
         .add_plugins(WorldPlugin {
             config: WorldConfig {
-                database_path: "data/database.db".into(),
-                shapefile_path: "data/01-05-2024/Wegvakken/Wegvakken.shp".into(),
-                road_map_path: "data/road_map.data".into(),
+                // database_path: "data/database.db".into(),
+                // shapefile_path: "data/01-05-2024/Wegvakken/Wegvakken.shp".into(),
+                geopackage_path: "data/01-02-2026/Wegvakken/Wegvakken.gpkg".into(),
+                // road_map_path: "data/road_map.data".into(),
                 directed_graph_path: "data/directed_graph.graph".into(),
 
                 selected_colour: Color::linear_rgb(0.0, 1.0, 0.0),

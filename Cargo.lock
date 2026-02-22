@@ -1406,6 +1406,7 @@ dependencies = [
  "bincode",
  "rayon",
  "rstar",
+ "rusqlite",
  "serde",
  "serde_json",
  "shapefile",

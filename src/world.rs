@@ -3,9 +3,11 @@ use crate::{
     nwb::{self},
     ui::{DirectedNetworkGraphContainer, PreProcess},
 };
-use bevy::prelude::*;
-use bevy_polyline::prelude::{Polyline, PolylineBundle, PolylineHandle, PolylineMaterial, PolylineMaterialHandle};
-use bevy_shapefile::{RoadId, RoadMap, RoadSection, AABB};
+use bevy::{math::bounding::Aabb2d, prelude::*};
+use bevy_polyline::prelude::{
+    Polyline, PolylineBundle, PolylineHandle, PolylineMaterial, PolylineMaterialHandle,
+};
+use bevy_shapefile::{RoadId, RoadMap, RoadSection};
 use graph::DirectedNetworkGraph;
 use std::{
     collections::{HashMap, HashSet},
@@ -28,9 +30,8 @@ pub struct LoadedMaterials {
 
 #[derive(Debug, Clone, Resource)]
 pub struct WorldConfig {
-    pub database_path: String,
-    pub road_map_path: String,
-    pub shapefile_path: String,
+    // pub road_map_path: String,
+    pub geopackage_path: String,
     pub directed_graph_path: String,
 
     pub selected_colour: Color,
@@ -174,19 +175,7 @@ fn init_road_map(config: Res<WorldConfig>, mut commands: Commands) {
 }
 
 fn load_road_map(config: &Res<WorldConfig>) -> RoadMap {
-    let road_map_path = Path::new(&config.road_map_path);
-
-    if let Ok(road_map) = crate::read_file(road_map_path) {
-        road_map
-    } else {
-        println!("File {:?} not found, creating...", road_map_path);
-        let road_map = bevy_shapefile::from_shapefile(&config.shapefile_path)
-            .expect("Could not read shapefile");
-
-        crate::write_file(&road_map, road_map_path).expect("Could not write road_map");
-
-        road_map
-    }
+    RoadMap::new(&config.geopackage_path)
 }
 
 fn load_graph(
@@ -199,7 +188,7 @@ fn load_graph(
         network
     } else {
         println!("File {:?} not found, creating...", network_path);
-        let network = nwb::preprocess_roadmap(road_map, &config.database_path);
+        let network = nwb::preprocess_roadmap(road_map, &config.geopackage_path);
         crate::write_file(&network, network_path).expect("Could not write network");
         network
     }
@@ -235,11 +224,8 @@ fn visible_entities(
         let min = convert(Vec2::new(-1.0, -1.0), transform, camera);
         let max = convert(Vec2::new(1.0, 1.0), transform, camera);
 
-        let visible = road_map
-            .road_spatial
-            .locate_in_envelope_intersecting(&AABB::from_corners([min.x, min.y], [max.x, max.y]))
-            .map(|x| x.id)
-            .collect::<HashSet<_>>();
+        let visible = road_map.load_roads_in_aabb2d(&Aabb2d { min, max });
+
         let tracked = tracker.map.keys().cloned().collect::<HashSet<_>>();
 
         let added = visible.difference(&tracked).cloned().collect::<Vec<_>>();
@@ -261,8 +247,8 @@ fn visible_entities(
         }
 
         for id in added {
-            let section = road_map.roads.get(&id).unwrap();
-            let entity = spawn_figure(&mut commands, id, section, &mut polylines, &materials);
+            let section = road_map.get_section(&id).unwrap();
+            let entity = spawn_figure(&mut commands, id, &section, &mut polylines, &materials);
 
             tracker.track(id, entity);
         }

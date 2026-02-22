@@ -1,29 +1,13 @@
 pub use road_map::*;
+use rusqlite::types::FromSql;
 use serde::{Deserialize, Serialize};
 pub use spatial::*;
-use std::path::Path;
 
 // mod road_data;
 mod road_map;
 mod spatial;
 
 pub type AABB = rstar::AABB<[f32; 2]>;
-
-pub fn from_shapefile<P: AsRef<Path>>(path: P) -> Result<RoadMap, ShapeError> {
-    println!("Start loading file");
-
-    let map = RoadMap::from_shapefile(path)?;
-
-    println!("Finished bundling");
-
-    Ok(map)
-}
-
-#[derive(Debug)]
-pub enum ShapeError {
-    IO,
-    Shape(shapefile::Error),
-}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct JunctionId(usize);
@@ -40,6 +24,14 @@ impl From<usize> for JunctionId {
     }
 }
 
+impl FromSql for JunctionId {
+    fn column_result(value: rusqlite::types::ValueRef<'_>) -> rusqlite::types::FromSqlResult<Self> {
+        let id = usize::column_result(value)?;
+        Ok(JunctionId(id))
+    }
+}
+
+//
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct RoadId(usize);
 
@@ -52,5 +44,12 @@ impl RoadId {
 impl From<usize> for RoadId {
     fn from(value: usize) -> Self {
         Self(value)
+    }
+}
+
+impl FromSql for RoadId {
+    fn column_result(value: rusqlite::types::ValueRef<'_>) -> rusqlite::types::FromSqlResult<Self> {
+        let id = usize::column_result(value)?;
+        Ok(RoadId(id))
     }
 }

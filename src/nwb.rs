@@ -145,10 +145,10 @@ pub fn preprocess_roadmap<P: AsRef<Path>>(
     let database = Connection::open(database).expect("Could not open database");
 
     let mut builder: DirectedNetworkBuilder<JunctionNode, RoadEdge> = DirectedNetworkBuilder::new();
-    let roads = &roadmap.roads;
+    
 
     let statement = database
-        .prepare("SELECT id,junction_id_begin, junction_id_end, rij_richting FROM wegvakken")
+        .prepare("SELECT id,JTE_ID_BEG, JTE_ID_END, RIJRICHTNG FROM wegvakken")
         .expect("Could not prepare statement")
         .query_map([], |f| {
             let id: usize = f.get(0)?;
@@ -166,7 +166,7 @@ pub fn preprocess_roadmap<P: AsRef<Path>>(
         .map(|x| x.unwrap())
         .collect::<HashMap<RoadId, (JunctionId, JunctionId, RijRichting)>>();
 
-    for (&road_id, section) in roads {
+    for (road_id, section) in roadmap.roads() {
         let (road_id_start, road_id_end, rij_richting) = statement[&road_id];
 
         let source = builder.add_node(JunctionNode {
