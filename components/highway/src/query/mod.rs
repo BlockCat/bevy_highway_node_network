@@ -1,6 +1,5 @@
+use graph::{highway_network::HighwayNetwork, EdgeDirection, NodeId};
 use std::collections::BinaryHeap;
-
-use graph::{builder::EdgeDirection, highway_network::HighwayNetwork, NodeId};
 
 pub fn shortest_path(source: NodeId, target: NodeId, network: &HighwayNetwork) {
     let mut forward = HighwayDijkstraIterator::default();

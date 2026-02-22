@@ -1,13 +1,21 @@
-use graph::{
-    builder::{DirectedNetworkBuilder, EdgeBuilder, EdgeDirection, NodeBuilder},
-    DirectedNetworkGraph, EdgeId, NetworkData, NodeId, ShortcutState,
-};
-use rayon::iter::{FromParallelIterator, ParallelIterator};
-use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
+// use graph::{
+//     DirectedNetworkGraph, EdgeId, NetworkData, NodeId, ShortcutState,
+// };
+// use rayon::iter::{FromParallelIterator, ParallelIterator};
+// use serde::{Deserialize, Serialize};
+// use std::collections::HashMap;
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
-pub struct IntermediateNode(pub NodeId);
+// #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
+// pub struct IntermediateNode(pub NodeId);
+
+use graph::{
+    directed_map_graph::{DirectedMapGraph, EdgeBuilder},
+    node_data::DefaultNetworkData,
+    EdgeDirection, NodeId, ShortcutState,
+};
+
+pub type IntermediateData = DefaultNetworkData<(), ShortcutState<u32>>;
+pub type IntermediateNetwork = DirectedMapGraph<IntermediateData>;
 
 #[derive(Debug, Clone)]
 pub struct IntermediateEdge {
@@ -17,46 +25,6 @@ pub struct IntermediateEdge {
     source: NodeId,
     target: NodeId,
     weight: f32,
-}
-
-impl NodeBuilder for IntermediateNode {
-    type Data = NodeId;
-
-    fn id(&self) -> u32 {
-        self.0 .0
-    }
-
-    fn data(&self) -> Self::Data {
-        self.0
-    }
-}
-
-impl EdgeBuilder for IntermediateEdge {
-    type Data = ShortcutState<u32>; // Points to road_id
-
-    fn data(&self) -> Self::Data {
-        self.data.clone()
-    }
-
-    fn source(&self) -> NodeId {
-        self.source
-    }
-
-    fn target(&self) -> NodeId {
-        self.target
-    }
-
-    fn weight(&self) -> f32 {
-        self.weight
-    }
-
-    fn direction(&self) -> EdgeDirection {
-        self.direction
-    }
-
-    fn road_id(&self) -> ShortcutState<usize> {
-        self.road_id.clone()
-    }
 }
 
 impl IntermediateEdge {
@@ -79,205 +47,269 @@ impl IntermediateEdge {
     }
 }
 
-#[derive(Debug, Default)]
-pub(crate) struct IntermediateNetwork {
-    out_edges: HashMap<NodeId, HashMap<NodeId, IntermediateEdge>>,
-    in_edges: HashMap<NodeId, HashMap<NodeId, IntermediateEdge>>,
-}
+impl EdgeBuilder for IntermediateEdge {
+    type GraphData = IntermediateData;
 
-impl IntermediateNetwork {
-    pub fn nodes(&self) -> Vec<NodeId> {
-        self.out_edges.keys().cloned().collect::<Vec<_>>()
-    }
-    pub fn out_edges(&self, node: NodeId) -> Option<&HashMap<NodeId, IntermediateEdge>> {
-        self.out_edges.get(&node)
+    fn source(&self) -> NodeId {
+        self.source
     }
 
-    pub fn in_edges(&self, node: NodeId) -> Option<&HashMap<NodeId, IntermediateEdge>> {
-        self.in_edges.get(&node)
-    }
-}
-impl IntermediateNetwork {
-    pub fn add_edge(&mut self, edge: IntermediateEdge) {
-        let source = edge.source;
-        let target = edge.target;
-        self.out_edges
-            .entry(source)
-            .or_default()
-            .insert(target, edge.clone());
-
-        self.in_edges
-            .entry(target)
-            .or_default()
-            .insert(source, edge.clone());
+    fn target(&self) -> NodeId {
+        self.target
     }
 
-    pub fn remove_node(&mut self, node: NodeId) {
-        if let Some(outs) = self.out_edges.get(&node) {
-            for edge in outs.values() {
-                self.in_edges.entry(edge.target).and_modify(|x| {
-                    x.remove(&node);
-                });
-            }
-        }
-
-        if let Some(ins) = self.in_edges.get(&node) {
-            for edge in ins.values() {
-                self.out_edges.entry(edge.source).and_modify(|x| {
-                    x.remove(&node);
-                });
-            }
-        }
-
-        self.out_edges.remove(&node);
-        self.in_edges.remove(&node);
+    fn weight(&self) -> f32 {
+        self.weight
     }
 
-    pub fn bypass(&mut self, node: NodeId) -> Vec<NodeId> {
-        let parents = if let Some(parents) = self.in_edges(node) {
-            parents
-        } else {
-            self.remove_node(node);
-            return vec![];
-        };
-        let children = if let Some(children) = self.out_edges(node) {
-            children
-        } else {
-            self.remove_node(node);
-            return vec![];
-        };
+    fn road_id(&self) -> ShortcutState<usize> {
+        self.road_id.clone()
+    }
 
-        let mut collects = Vec::new();
-
-        for (parent, parent_edge) in parents {
-            debug_assert_eq!(parent, &parent_edge.source);
-            for (child, child_edge) in children {
-                debug_assert_eq!(child, &child_edge.target);
-                if parent.0 != child.0 {
-                    let distance = parent_edge.weight + child_edge.weight;
-                    let (state, road_ids) = collect_shortcut_data_edges(parent_edge, child_edge);
-                    let shortcut = IntermediateEdge::new(
-                        *parent,
-                        *child,
-                        distance,
-                        ShortcutState::Shortcut(state),
-                        ShortcutState::Shortcut(road_ids),
-                        EdgeDirection::Forward,
-                    );
-
-                    collects.push(shortcut);
-                }
-            }
-        }
-
-        let touched = parents.keys().chain(children.keys()).cloned().collect();
-
-        self.remove_node(node);
-
-        for shortcut in collects {
-            self.add_edge(shortcut)
-        }
-
-        touched
+    fn edge_data(&self) -> <Self::GraphData as graph::NetworkData>::EdgeData {
+        self.data.clone()
     }
 }
 
-fn collect_shortcut_data_edges(
-    parent_edge: &IntermediateEdge,
-    child_edge: &IntermediateEdge,
-) -> (Vec<u32>, Vec<usize>) {
-    let mut edge_id_a = Vec::from(parent_edge.data.clone());
-    let mut road_id_a = Vec::from(parent_edge.road_id.clone());
+// impl NodeBuilder for IntermediateNode {
+//     type Data = NodeId;
 
-    edge_id_a.extend(Vec::from(child_edge.data.clone()));
-    road_id_a.extend(Vec::from(child_edge.road_id.clone()));
+//     fn id(&self) -> u32 {
+//         self.0 .0
+//     }
 
-    (edge_id_a, road_id_a)
-}
+//     fn data(&self) -> Self::Data {
+//         self.0
+//     }
+// }
 
-impl FromIterator<IntermediateEdge> for IntermediateNetwork {
-    fn from_iter<T: IntoIterator<Item = IntermediateEdge>>(iter: T) -> Self {
-        let mut intermediate = IntermediateNetwork::default();
-        for edge in iter.into_iter() {
-            intermediate.add_edge(edge);
-        }
+// impl EdgeBuilder for IntermediateEdge {
+//     type Data = ShortcutState<u32>; // Points to road_id
 
-        intermediate
-    }
-}
+//     fn data(&self) -> Self::Data {
+//         self.data.clone()
+//     }
 
-impl FromParallelIterator<IntermediateEdge> for IntermediateNetwork {
-    fn from_par_iter<I>(par_iter: I) -> Self
-    where
-        I: rayon::iter::IntoParallelIterator<Item = IntermediateEdge>,
-    {
-        let mut intermediate = IntermediateNetwork::default();
-        let edges = par_iter.into_par_iter().collect::<Vec<_>>();
-        println!("Collected");
-        for edge in edges {
-            intermediate.add_edge(edge);
-        }
+//     fn source(&self) -> NodeId {
+//         self.source
+//     }
 
-        intermediate
-    }
-}
+//     fn target(&self) -> NodeId {
+//         self.target
+//     }
 
-#[derive(Debug, Default, Clone, Serialize, Deserialize)]
-pub struct IntermediateData {
-    references: HashMap<NodeId, NodeId>,
-    shortcuts: HashMap<EdgeId, ShortcutState<u32>>,
-    road_ids: HashMap<EdgeId, ShortcutState<usize>>,
-}
+//     fn weight(&self) -> f32 {
+//         self.weight
+//     }
 
-impl NetworkData for IntermediateData {
-    type NodeData = NodeId;
-    type EdgeData = ShortcutState<u32>;
+//     fn direction(&self) -> EdgeDirection {
+//         self.direction
+//     }
 
-    fn node_data(&self, node: NodeId) -> &Self::NodeData {
-        &self.references[&node]
-    }
+//     fn road_id(&self) -> ShortcutState<usize> {
+//         self.road_id.clone()
+//     }
+// }
 
-    fn edge_data(&self, edge: EdgeId) -> &Self::EdgeData {
-        &self.shortcuts[&edge]
-    }
+// // #[derive(Debug, Default)]
+// // pub(crate) struct IntermediateNetwork {
+// //     out_edges: HashMap<NodeId, HashMap<NodeId, IntermediateEdge>>,
+// //     in_edges: HashMap<NodeId, HashMap<NodeId, IntermediateEdge>>,
+// // }
 
-    fn with_size(node_size: usize, edge_size: usize) -> Self {
-        Self {
-            references: HashMap::with_capacity(node_size),
-            shortcuts: HashMap::with_capacity(edge_size),
-            road_ids: HashMap::with_capacity(edge_size),
-        }
-    }
+// impl IntermediateNetwork {
+//     pub fn nodes(&self) -> Vec<NodeId> {
+//         self.out_edges.keys().cloned().collect::<Vec<_>>()
+//     }
+//     pub fn out_edges(&self, node: NodeId) -> Option<&HashMap<NodeId, IntermediateEdge>> {
+//         self.out_edges.get(&node)
+//     }
 
-    fn add_node(&mut self, _: NodeId, _: Self::NodeData) {}
+//     pub fn in_edges(&self, node: NodeId) -> Option<&HashMap<NodeId, IntermediateEdge>> {
+//         self.in_edges.get(&node)
+//     }
+// }
+// impl IntermediateNetwork {
+//     pub fn add_edge(&mut self, edge: IntermediateEdge) {
+//         let source = edge.source;
+//         let target = edge.target;
+//         self.out_edges
+//             .entry(source)
+//             .or_default()
+//             .insert(target, edge.clone());
 
-    fn add_edge(&mut self, edge: EdgeId, data: Self::EdgeData, road_id: ShortcutState<usize>) {
-        self.shortcuts.insert(edge, data);
-        self.road_ids.insert(edge, road_id);
-    }
+//         self.in_edges
+//             .entry(target)
+//             .or_default()
+//             .insert(source, edge.clone());
+//     }
 
-    fn edge_road_id(&self, edge: EdgeId) -> ShortcutState<usize> {
-        self.road_ids[&edge].clone()
-    }
-}
+//     pub fn remove_node(&mut self, node: NodeId) {
+//         if let Some(outs) = self.out_edges.get(&node) {
+//             for edge in outs.values() {
+//                 self.in_edges.entry(edge.target).and_modify(|x| {
+//                     x.remove(&node);
+//                 });
+//             }
+//         }
 
-impl From<IntermediateNetwork> for DirectedNetworkGraph<IntermediateData> {
-    fn from(val: IntermediateNetwork) -> Self {
-        let mut builder = DirectedNetworkBuilder::<IntermediateNode, IntermediateEdge>::new();
+//         if let Some(ins) = self.in_edges.get(&node) {
+//             for edge in ins.values() {
+//                 self.out_edges.entry(edge.source).and_modify(|x| {
+//                     x.remove(&node);
+//                 });
+//             }
+//         }
 
-        for node in val.nodes() {
-            for (_, edge) in val.out_edges(node).unwrap() {
-                let n1 = builder.add_node(IntermediateNode(edge.source));
-                let n2 = builder.add_node(IntermediateNode(edge.target));
+//         self.out_edges.remove(&node);
+//         self.in_edges.remove(&node);
+//     }
 
-                builder.add_edge(IntermediateEdge {
-                    source: n1,
-                    target: n2,
-                    ..edge.clone()
-                });
-            }
-        }
+//     pub fn bypass(&mut self, node: NodeId) -> Vec<NodeId> {
+//         let parents = if let Some(parents) = self.in_edges(node) {
+//             parents
+//         } else {
+//             self.remove_node(node);
+//             return vec![];
+//         };
+//         let children = if let Some(children) = self.out_edges(node) {
+//             children
+//         } else {
+//             self.remove_node(node);
+//             return vec![];
+//         };
 
-        builder.build()
-    }
-}
+//         let mut collects = Vec::new();
+
+//         for (parent, parent_edge) in parents {
+//             debug_assert_eq!(parent, &parent_edge.source);
+//             for (child, child_edge) in children {
+//                 debug_assert_eq!(child, &child_edge.target);
+//                 if parent.0 != child.0 {
+//                     let distance = parent_edge.weight + child_edge.weight;
+//                     let (state, road_ids) = collect_shortcut_data_edges(parent_edge, child_edge);
+//                     let shortcut = IntermediateEdge::new(
+//                         *parent,
+//                         *child,
+//                         distance,
+//                         ShortcutState::Shortcut(state),
+//                         ShortcutState::Shortcut(road_ids),
+//                         EdgeDirection::Forward,
+//                     );
+
+//                     collects.push(shortcut);
+//                 }
+//             }
+//         }
+
+//         let touched = parents.keys().chain(children.keys()).cloned().collect();
+
+//         self.remove_node(node);
+
+//         for shortcut in collects {
+//             self.add_edge(shortcut)
+//         }
+
+//         touched
+//     }
+// }
+
+// fn collect_shortcut_data_edges(
+//     parent_edge: &IntermediateEdge,
+//     child_edge: &IntermediateEdge,
+// ) -> (Vec<u32>, Vec<usize>) {
+//     let mut edge_id_a = Vec::from(parent_edge.data.clone());
+//     let mut road_id_a = Vec::from(parent_edge.road_id.clone());
+
+//     edge_id_a.extend(Vec::from(child_edge.data.clone()));
+//     road_id_a.extend(Vec::from(child_edge.road_id.clone()));
+
+//     (edge_id_a, road_id_a)
+// }
+
+// impl FromIterator<IntermediateEdge> for IntermediateNetwork {
+//     fn from_iter<T: IntoIterator<Item = IntermediateEdge>>(iter: T) -> Self {
+//         let mut intermediate = IntermediateNetwork::default();
+//         for edge in iter.into_iter() {
+//             intermediate.add_edge(edge);
+//         }
+
+//         intermediate
+//     }
+// }
+
+// impl FromParallelIterator<IntermediateEdge> for IntermediateNetwork {
+//     fn from_par_iter<I>(par_iter: I) -> Self
+//     where
+//         I: rayon::iter::IntoParallelIterator<Item = IntermediateEdge>,
+//     {
+//         let mut intermediate = IntermediateNetwork::default();
+//         let edges = par_iter.into_par_iter().collect::<Vec<_>>();
+//         println!("Collected");
+//         for edge in edges {
+//             intermediate.add_edge(edge);
+//         }
+
+//         intermediate
+//     }
+// }
+
+// #[derive(Debug, Default, Clone, Serialize, Deserialize)]
+// pub struct IntermediateData {
+//     references: HashMap<NodeId, NodeId>,
+//     shortcuts: HashMap<EdgeId, ShortcutState<u32>>,
+//     road_ids: HashMap<EdgeId, ShortcutState<usize>>,
+// }
+
+// impl NetworkData for IntermediateData {
+//     type NodeData = NodeId;
+//     type EdgeData = ShortcutState<u32>;
+
+//     fn node_data(&self, node: NodeId) -> &Self::NodeData {
+//         &self.references[&node]
+//     }
+
+//     fn edge_data(&self, edge: EdgeId) -> &Self::EdgeData {
+//         &self.shortcuts[&edge]
+//     }
+
+//     fn with_size(node_size: usize, edge_size: usize) -> Self {
+//         Self {
+//             references: HashMap::with_capacity(node_size),
+//             shortcuts: HashMap::with_capacity(edge_size),
+//             road_ids: HashMap::with_capacity(edge_size),
+//         }
+//     }
+
+//     fn add_node(&mut self, _: NodeId, _: Self::NodeData) {}
+
+//     fn add_edge(&mut self, edge: EdgeId, data: Self::EdgeData, road_id: ShortcutState<usize>) {
+//         self.shortcuts.insert(edge, data);
+//         self.road_ids.insert(edge, road_id);
+//     }
+
+//     fn edge_road_id(&self, edge: EdgeId) -> ShortcutState<usize> {
+//         self.road_ids[&edge].clone()
+//     }
+// }
+
+// impl From<IntermediateNetwork> for DirectedNetworkGraph<IntermediateData> {
+//     fn from(val: IntermediateNetwork) -> Self {
+//         let mut builder = DirectedNetworkBuilder::<IntermediateNode, IntermediateEdge>::new();
+
+//         for node in val.nodes() {
+//             for (_, edge) in val.out_edges(node).unwrap() {
+//                 let n1 = builder.add_node(IntermediateNode(edge.source));
+//                 let n2 = builder.add_node(IntermediateNode(edge.target));
+
+//                 builder.add_edge(IntermediateEdge {
+//                     source: n1,
+//                     target: n2,
+//                     ..edge.clone()
+//                 });
+//             }
+//         }
+
+//         builder.build()
+//     }
+// }

@@ -2,24 +2,7 @@ use crate::{DirectedNetworkGraph, NetworkData, NetworkEdge, NetworkNode, NodeId,
 use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, fmt::Debug, hash::Hash, ops::Neg};
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
-pub enum EdgeDirection {
-    Forward,
-    Both,
-    Backward,
-}
 
-impl Neg for EdgeDirection {
-    type Output = EdgeDirection;
-
-    fn neg(self) -> Self::Output {
-        match self {
-            EdgeDirection::Forward => EdgeDirection::Backward,
-            EdgeDirection::Both => EdgeDirection::Both,
-            EdgeDirection::Backward => EdgeDirection::Forward,
-        }
-    }
-}
 
 pub trait NodeBuilder: Hash + PartialEq + Eq {
     type Data: Clone;

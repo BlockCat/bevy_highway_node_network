@@ -2295,6 +2295,7 @@ dependencies = [
 name = "graph"
 version = "0.1.0"
 dependencies = [
+ "bevy_shapefile",
  "bincode",
  "itertools 0.13.0",
  "rayon",

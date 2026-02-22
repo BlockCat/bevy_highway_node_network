@@ -190,16 +190,13 @@ fn reference_distance(
 
 #[cfg(test)]
 mod tests {
-
+    use super::{create_directed_acyclic_graph, ComputedState};
+    use crate::generation::dijkstra::collect_next_level_edges;
     use graph::{
-        builder::EdgeDirection, create_network, DirectedNetworkGraph, NetworkEdge, NetworkNode,
-        NodeId,
+        create_network, DirectedNetworkGraph, EdgeDirection, NetworkEdge, NetworkNode, NodeId,
     };
     use std::collections::HashSet;
 
-    use crate::generation::dijkstra::collect_next_level_edges;
-
-    use super::{create_directed_acyclic_graph, ComputedState};
     // https://www.baeldung.com/wp-content/uploads/2017/01/initial-graph.png
     pub fn create_ref_network_1() -> DirectedNetworkGraph<()> {
         let nodes = vec![
