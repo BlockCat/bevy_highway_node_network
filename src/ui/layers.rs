@@ -77,11 +77,11 @@ fn load_or_calculate<P: AsRef<Path>, F>(
 where
     F: Fn() -> DirectedNetworkGraph<IntermediateData>,
 {
-    if let Ok(network) = crate::read_file(&path) {
+    if let Ok(network) = crate::io::read_file(&path) {
         network
     } else {
         let network = calculate();
-        crate::write_file(&network, path).expect("Could not write");
+        crate::io::write_file(&network, path).expect("Could not write");
 
         network
     }

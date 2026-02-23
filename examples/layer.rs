@@ -1,4 +1,4 @@
-use bevy_dutch_road_highway_node_network::{nwb::NWBNetworkData, read_file, write_file};
+use bevy_dutch_road_highway_node_network::{io::{read_file, write_file}, nwb::NWBNetworkData};
 use highway::generation::calculate_layer;
 use graph::{DirectedNetworkGraph, NetworkData};
 
