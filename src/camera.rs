@@ -48,17 +48,6 @@ fn load_camera(mut commands: Commands) {
             OrthographicProjection::default_3d(),
         ))
         .insert(MainCamera);
-    // commands
-    //     .spawn(Camera3d {
-    //         transform: ,
-    //         projection: Projection::Orthographic(Default::default()),
-    //         camera: Camera {
-    //             hdr: true,
-    //             ..default()
-    //         },
-    //         ..default()
-    //     })
-    //     .insert(MainCamera);
 }
 
 fn camera_system_zoom(

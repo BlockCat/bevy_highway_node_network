@@ -1,12 +1,11 @@
-pub mod resources;
-pub mod systems;
+mod resources;
+mod systems;
 
-pub use resources::{
-    LoadedMaterials, WorldConfig, WorldEntity, WorldEntitySelectionType, WorldTracker,
-};
+pub use resources::{WorldConfig, WorldEntity, WorldEntitySelectionType};
 pub use systems::convert;
 
 use bevy::prelude::*;
+use resources::WorldTracker;
 
 pub struct WorldPlugin {
     pub config: WorldConfig,

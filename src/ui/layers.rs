@@ -195,7 +195,6 @@ impl PreProcess {
             .collect::<HashMap<_, _>>();
 
         println!("Base line of: {}", road_data_level.len());
-        // process_edges(0, &base, &mut road_data_level);
 
         for (layer_id, layer) in layers.iter().enumerate() {
             process_edges(layer_id as u8 + 1, layer, &mut road_data_level);
