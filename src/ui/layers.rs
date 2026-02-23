@@ -77,11 +77,11 @@ fn load_or_calculate<P: AsRef<Path>, F>(
 where
     F: Fn() -> DirectedNetworkGraph<IntermediateData>,
 {
-    if let Ok(network) = crate::read_file(&path) {
+    if let Ok(network) = crate::io::read_file(&path) {
         network
     } else {
         let network = calculate();
-        crate::write_file(&network, path).expect("Could not write");
+        crate::io::write_file(&network, path).expect("Could not write");
 
         network
     }
@@ -195,7 +195,6 @@ impl PreProcess {
             .collect::<HashMap<_, _>>();
 
         println!("Base line of: {}", road_data_level.len());
-        // process_edges(0, &base, &mut road_data_level);
 
         for (layer_id, layer) in layers.iter().enumerate() {
             process_edges(layer_id as u8 + 1, layer, &mut road_data_level);

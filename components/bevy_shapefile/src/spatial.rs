@@ -80,70 +80,31 @@ impl FromSql for RoadSection {
     }
 }
 
+fn read_bytes<'a, I, const N: usize>(iter: &mut I) -> rusqlite::types::FromSqlResult<[u8; N]>
+where
+    I: Iterator<Item = &'a u8>,
+{
+    let mut bytes = [0u8; N];
+    for b in &mut bytes {
+        *b = *iter.next().ok_or(rusqlite::types::FromSqlError::InvalidType)?;
+    }
+    Ok(bytes)
+}
+
 fn read_f64<'a, I>(iter: &mut I, is_big_endian: bool) -> rusqlite::types::FromSqlResult<f64>
 where
     I: Iterator<Item = &'a u8>,
 {
-    let bytes: [u8; 8] = [
-        *iter
-            .next()
-            .ok_or(rusqlite::types::FromSqlError::InvalidType)?,
-        *iter
-            .next()
-            .ok_or(rusqlite::types::FromSqlError::InvalidType)?,
-        *iter
-            .next()
-            .ok_or(rusqlite::types::FromSqlError::InvalidType)?,
-        *iter
-            .next()
-            .ok_or(rusqlite::types::FromSqlError::InvalidType)?,
-        *iter
-            .next()
-            .ok_or(rusqlite::types::FromSqlError::InvalidType)?,
-        *iter
-            .next()
-            .ok_or(rusqlite::types::FromSqlError::InvalidType)?,
-        *iter
-            .next()
-            .ok_or(rusqlite::types::FromSqlError::InvalidType)?,
-        *iter
-            .next()
-            .ok_or(rusqlite::types::FromSqlError::InvalidType)?,
-    ];
-
-    let value = if is_big_endian {
-        f64::from_be_bytes(bytes)
-    } else {
-        f64::from_le_bytes(bytes)
-    };
-
-    Ok(value)
+    let bytes = read_bytes(iter)?;
+    Ok(if is_big_endian { f64::from_be_bytes(bytes) } else { f64::from_le_bytes(bytes) })
 }
 
 fn read_u32<'a, I>(iter: &mut I, is_big_endian: bool) -> rusqlite::types::FromSqlResult<u32>
 where
     I: Iterator<Item = &'a u8>,
 {
-    let bytes: [u8; 4] = [
-        *iter
-            .next()
-            .ok_or(rusqlite::types::FromSqlError::InvalidType)?,
-        *iter
-            .next()
-            .ok_or(rusqlite::types::FromSqlError::InvalidType)?,
-        *iter
-            .next()
-            .ok_or(rusqlite::types::FromSqlError::InvalidType)?,
-        *iter
-            .next()
-            .ok_or(rusqlite::types::FromSqlError::InvalidType)?,
-    ];
-    let value = if is_big_endian {
-        u32::from_be_bytes(bytes)
-    } else {
-        u32::from_le_bytes(bytes)
-    };
-    Ok(value)
+    let bytes = read_bytes(iter)?;
+    Ok(if is_big_endian { u32::from_be_bytes(bytes) } else { u32::from_le_bytes(bytes) })
 }
 
 #[derive(Serialize, Deserialize, Debug)]

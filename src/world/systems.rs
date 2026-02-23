@@ -1,6 +1,6 @@
 use crate::{
     camera::MainCamera,
-    nwb::{self},
+    nwb,
     ui::{DirectedNetworkGraphContainer, PreProcess},
 };
 use bevy::{math::bounding::Aabb2d, prelude::*};
@@ -10,79 +10,15 @@ use bevy_polyline::prelude::{
 use bevy_shapefile::{RoadId, RoadMap, RoadSection};
 use graph::DirectedNetworkGraph;
 use std::{
-    collections::{HashMap, HashSet},
+    collections::HashSet,
     path::Path,
 };
 
-pub struct WorldPlugin {
-    pub config: WorldConfig,
-}
+use super::resources::{
+    LoadedMaterials, WorldConfig, WorldEntity, WorldEntitySelectionType, WorldTracker,
+};
 
-#[derive(Resource)]
-pub struct LoadedMaterials {
-    normal_material: Handle<PolylineMaterial>,
-    selected_material: Handle<PolylineMaterial>,
-
-    outgoing_material: Handle<PolylineMaterial>,
-    incoming_material: Handle<PolylineMaterial>,
-    route_material: Handle<PolylineMaterial>,
-}
-
-#[derive(Debug, Clone, Resource)]
-pub struct WorldConfig {
-    pub road_map_path: String,
-    pub geopackage_path: String,
-    pub directed_graph_path: String,
-
-    pub selected_colour: Color,
-    pub normal_colour: Color,
-}
-
-#[derive(Debug, Clone, Component)]
-pub struct WorldEntity {
-    pub id: RoadId,
-    pub selected: WorldEntitySelectionType,
-}
-
-#[derive(Debug, Clone)]
-pub enum WorldEntitySelectionType {
-    NotSelected,
-    BaseSelected,
-    BiDirection,
-    Outgoing,
-    Incoming,
-    Route,
-}
-
-#[derive(Debug, Default, Resource)]
-pub struct WorldTracker {
-    pub map: HashMap<RoadId, Entity>,
-}
-
-impl WorldTracker {
-    pub fn track(&mut self, id: RoadId, entity: Entity) {
-        self.map.insert(id, entity);
-    }
-    pub fn remove(&mut self, id: RoadId) {
-        self.map.remove(&id);
-    }
-}
-
-impl Plugin for WorldPlugin {
-    fn build(&self, app: &mut bevy::prelude::App) {
-        app.insert_resource(WorldTracker::default())
-            .insert_resource(self.config.clone())
-            .add_systems(Startup, init_materials)
-            .add_systems(Startup, init_road_map)
-            .add_systems(Update, mark_on_changed_preprocess)
-            .add_systems(Update, colour_system) // Used for drawing the layers
-            // .add_systems(Update, test_algorithm)
-            // .add_systems(Update, help)
-            .add_systems(Update, visible_entities);
-    }
-}
-
-fn init_materials(
+pub fn init_materials(
     config: Res<WorldConfig>,
     mut commands: Commands,
     mut polyline_materials: ResMut<Assets<PolylineMaterial>>,
@@ -141,7 +77,7 @@ fn init_materials(
     });
 }
 
-fn init_road_map(config: Res<WorldConfig>, mut commands: Commands) {
+pub fn init_road_map(config: Res<WorldConfig>, mut commands: Commands) {
     let road_map = load_road_map(&config);
 
     let network = load_graph(config, &road_map);
@@ -152,37 +88,19 @@ fn init_road_map(config: Res<WorldConfig>, mut commands: Commands) {
     println!("Nodes: {}", network.nodes().len());
     println!("Edges: {}", network.edges().len());
 
-    // let out = network
-    //     .nodes()
-    //     .iter()
-    //     .map(|nn| nn.out_len())
-    //     .collect::<Vec<_>>();
-
-    // println!(
-    //     "out_edges: [avg: {}, min: {}, max: {}",
-    //     out.iter().sum::<usize>() as f32 / out.len() as f32,
-    //     out.iter().min().unwrap(),
-    //     out.iter().max().unwrap()
-    // );
-
-    // let next_level_edges = network::calculate_layer(30, &network, 2.0);
-    // println!("Collected phase1 edges: {}", next_level_edges.len());
-
     commands.insert_resource(road_map);
     commands.insert_resource(DirectedNetworkGraphContainer(network));
-
-    // commands.insert_resource(next_level_edges);
 }
 
 fn load_road_map(config: &Res<WorldConfig>) -> RoadMap {
-    if let Ok(road_map) = crate::read_file(&config.road_map_path) {
+    if let Ok(road_map) = crate::io::read_file(&config.road_map_path) {
         road_map
     } else {
         println!("File {:?} not found, creating...", config.road_map_path);
         let road_map =
             RoadMap::from_geopackage(&config.geopackage_path).expect("Could not load road map");
 
-        crate::write_file(&road_map, &config.road_map_path).expect("Could not write road_map");
+        crate::io::write_file(&road_map, &config.road_map_path).expect("Could not write road_map");
 
         road_map
     }
@@ -194,17 +112,17 @@ fn load_graph(
 ) -> DirectedNetworkGraph<nwb::NWBNetworkData> {
     let network_path = Path::new(&config.directed_graph_path);
 
-    if let Ok(network) = crate::read_file(network_path) {
+    if let Ok(network) = crate::io::read_file(network_path) {
         network
     } else {
         println!("File {:?} not found, creating...", network_path);
         let network = nwb::preprocess_roadmap(road_map, &config.geopackage_path);
-        crate::write_file(&network, network_path).expect("Could not write network");
+        crate::io::write_file(&network, network_path).expect("Could not write network");
         network
     }
 }
 
-fn mark_on_changed_preprocess(
+pub fn mark_on_changed_preprocess(
     mut tracker: ResMut<WorldTracker>,
     preprocess: Option<Res<PreProcess>>,
     mut q_camera: Query<(&Camera, &GlobalTransform, &mut Transform), (With<MainCamera>,)>,
@@ -216,7 +134,7 @@ fn mark_on_changed_preprocess(
     }
 }
 
-fn visible_entities(
+pub fn visible_entities(
     mut commands: Commands,
     materials: Res<LoadedMaterials>,
     road_map: Res<RoadMap>,
@@ -265,7 +183,7 @@ fn visible_entities(
     }
 }
 
-fn colour_system(
+pub fn colour_system(
     loaded_materials: Res<LoadedMaterials>,
     mut query: Query<(&mut WorldEntity, &mut PolylineMaterialHandle)>,
 ) {

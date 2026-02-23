@@ -19,29 +19,6 @@ macro_rules! stopwatch {
 
         (end - start, value)
     }};
-    ($x:block) => {{
-        let start = std::time::Instant::now();
-        let value = $x;
-        let end = std::time::Instant::now();
-
-        (end - start, value)
-    }};
-
-    (print $x:block) => {{
-        let (duration, value) = stopwatch!($x);
-
-        println!("Duration: {}µs", duration.as_micros());
-
-        value
-    }};
-
-    (print $x:expr) => {{
-        let (duration, value) = stopwatch!($x);
-
-        println!("Duration: {}µs", duration.as_micros());
-
-        value
-    }};
 }
 
 pub fn calculate_layer<D: NetworkData>(
